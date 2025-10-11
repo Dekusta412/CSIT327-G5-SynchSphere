@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load form_tags %}
+{% block content %}
+<div class="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-4">
+  <div class="w-full max-w-md bg-gray-900/70 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-gray-800 transition-all duration-300 hover:border-blue-500/40">
+    <div class="text-center mb-8">
+      <div class="flex justify-center mb-3">
+        <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
+          <span class="text-white text-xl font-bold">S</span>
+        </div>
+      </div>
+      <h2 class="text-3xl font-bold text-white tracking-tight">Welcome Back</h2>
+      <p class="text-gray-400 text-sm mt-1">Log in to continue using <span class="text-blue-400 font-medium">SynchSphere</span></p>
+    </div>
+
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div>
+        <label class="block text-gray-300 text-sm mb-2">Username</label>
+        {{ form.username|as_widget:"{'class': 'w-full px-4 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'}" }}
+      </div>
+      <div>
+        <label class="block text-gray-300 text-sm mb-2">Password</label>
+        {{ form.password|as_widget:"{'class': 'w-full px-4 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'}" }}
+      </div>
+
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow-md shadow-blue-500/20 transition-all duration-200">
+        Sign In
+      </button>
+
+      <div class="flex items-center justify-between mt-4 text-sm">
+        <a href="#" class="text-blue-400 hover:text-blue-300 hover:underline">Forgot password?</a>
+        <p class="text-gray-400">New here?
+          <a href="{% url 'accounts:register' %}" class="text-blue-400 hover:text-blue-300 hover:underline">Sign up</a>
+        </p>
+      </div>
+
+      <div class="flex items-center justify-center mt-6">
+        <div class="w-full h-px bg-gray-700"></div>
+        <span class="px-3 text-gray-500 text-sm">or</span>
+        <div class="w-full h-px bg-gray-700"></div>
+      </div>
+
+      <div class="flex gap-3 mt-4">
+        <button type="button" class="w-1/2 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 py-2.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200">
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+          <span>Google</span>
+        </button>
+        <button type="button" class="w-1/2 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 py-2.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200">
+          <img src="https://www.svgrepo.com/show/512317/github-142.svg" class="w-5 h-5" alt="GitHub">
+          <span>GitHub</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
