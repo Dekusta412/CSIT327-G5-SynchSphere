@@ -6,6 +6,8 @@ Format conventions
 - Version header: `Version X.Y.Z — YYYY-MM-DD` (date optional)
 - Sections: Added / Changed / Fixed / Notes
 
+---
+
 Version 1.1.1 — 2025-10-13
 
 Highlights
