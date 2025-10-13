@@ -60,7 +60,7 @@ python manage.py runserver
 
 | Name               | Role                     | CIT-U Email                                                   |
 | ------------------ | ------------------------ | ------------------------------------------------------------- |
-| Dexter Dela Riarte | Developer / Backend Lead | [dexter.delariarte@cit.edu](mailto:dexter.delariarte@cit.edu) |
+| Dexter Dela Riarte | Lead Developer | [dexter.delariarte@cit.edu](mailto:dexter.delariarte@cit.edu) |
 | [Add Member Name]  | [Role]                   | [Email]                                                       |
 | [Add Member Name]  | [Role]                   | [Email]                                                       |
 
