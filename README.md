@@ -32,7 +32,7 @@ Follow these steps to run the project locally:
 ### 1️⃣ Clone the repository
 ```bash
 git clone https://github.com/Dekusta412/CSIT327-G5-SynchSphere.git
-cd SynchSphere
+cd CSIT327-G5-SynchSphere
 ```
 
 ### 2️⃣ Create and activate a virtual environment
