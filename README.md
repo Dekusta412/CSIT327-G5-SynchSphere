@@ -49,7 +49,14 @@ pip install -r requirements.txt
 
 Create a .env file in your project root and configure:
 ``` bash
-DATABASE_URL='postgresql://postgres.abxgnvtsdffumjnseggr:Yj91$7okue1DHKp@aws-1-us-east-1.pooler.supabase.com:5432/postgres'
+SECRET_KEY=django-insecure-k*ql75^#ih$j65!qnjp)9v218rjg=0#xni9$&0a60cof%&z9=a
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+DATABASE_URL=postgresql://postgres.lbrxusakyibimejwlgpj:Yj91$7okue1DHKp@aws-1-us-east-1.pooler.supabase.com:5432/postgres
+
+EMAIL_USER=synchsphere.noreply@gmail.com
+EMAIL_PASS=lacsrtpihixdxhp
 ```
 
 ### 5️⃣ Run the development server
