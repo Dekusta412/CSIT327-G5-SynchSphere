@@ -68,8 +68,8 @@ python manage.py runserver
 | Name               | Role                     | CIT-U Email                                                   |
 | ------------------ | ------------------------ | ------------------------------------------------------------- |
 | Dexter Dela Riarte | Lead Developer | [dexter.delariarte@cit.edu](mailto:dexter.delariarte@cit.edu) |
-| Jon Nicole F. Din  | Backend Developer  | [jonnicole.din@cit.edu](mailto:jonnicole.din@cit.edu) |
-| James Stefan C. Legaspino  | Frontend Developer  | [jamesstefan.legaspino@cit.edu](mailto:jamesstefan.legaspino@cit.edu) |
+| Jon Nicole F. Din  | Frontend Developer  | [jonnicole.din@cit.edu](mailto:jonnicole.din@cit.edu) |
+| James Stefan C. Legaspino  | Backend Developer  | [jamesstefan.legaspino@cit.edu](mailto:jamesstefan.legaspino@cit.edu) |
 
 
 ## 🚀 Deployed Link
