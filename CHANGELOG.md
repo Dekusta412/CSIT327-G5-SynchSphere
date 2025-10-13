@@ -111,26 +111,3 @@ Added requirements.txt for reproducible setup.
 
 
 Prepared .env.example for future collaborators.
-
-
-
-🔧 Developer Setup Notes
-
-
-
-To set up locally after cloning:
-
-
-
-git clone https://github.com/Dekusta412/CSIT327-G5-SynchSphere.git
-
-cd SynchSphere
-
-python -m venv env
-
-.\\env\\Scripts\\activate
-
-pip install -r requirements.txt
-
-python manage.py runserver
-
