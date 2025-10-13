@@ -21,7 +21,6 @@ By combining real-time notifications with intelligent time zone management, Sync
 **Other Tools**
 - Git & GitHub (version control)
 - PowerShell / VS Code (development)
-- Gmail SMTP (for email notifications & password resets)
 
 ---
 
