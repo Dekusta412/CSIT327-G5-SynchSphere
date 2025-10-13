@@ -1,113 +1,48 @@
+# Changelog
+
+All notable changes to this project are recorded in this file. This project follows a simple, chronological changelog where newer versions appear first.
+
+Format conventions
+- Version header: `Version X.Y.Z — YYYY-MM-DD` (date optional)
+- Sections: Added / Changed / Fixed / Notes
+
+---
+
+Version 1.1.0 — 2025-10-13
+
+Highlights
+- Improved home page UX: removed the prominent "You are successfully logged in" banner; the page now shows a neutral welcome for anonymous visitors and a subtle account indicator for authenticated users.
+- Logout now redirects users to the home page.
+- Added full password-reset flow ("Forgot password?") including form, confirmation pages and email template.
+- Email configuration now reads SMTP credentials from `.env`; defaults to console backend during development.
+- Annotated release tag `v1.1.0` created and pushed.
+
+Notes
+- If you need real email delivery in production, set `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, and `EMAIL_HOST_PASSWORD` in your `.env` and configure `DEBUG=False` (or set `EMAIL_BACKEND`).
+- If your remote rejects a push because it contains unrelated commits, fetch and merge or rebase before pushing.
+
+---
+
 Version 1.0.0 — Initial Release
 
-🚀 Overview
-
-
-
-This is the first working version of SynchSphere, a time synchronization and notification system designed to manage international meetings efficiently across different time zones.
-
-
-
-🧩 Features Implemented
-
-
-
-Django Project Setup
-
-
-
-Initialized Django project and virtual environment (env).
-
-
-
-Configured Supabase as the main database backend.
-
-
-
-Added environment variable handling using .env.
-
-
-
-User Authentication System
-
-
-
-Added accounts app for login and registration.
-
-
-
-Implemented Django UserCreationForm and AuthenticationForm.
-
-
-
-Added custom email uniqueness validation in registration.
-
-
-
-Username validation automatically handled by Django.
-
-
-
-Added secure password validation with Django’s built-in validators.
-
-
-
-Created redirects for successful login/logout.
-
-
-
-UI and Styling
-
-
-
-Integrated TailwindCSS via CDN (no npm build required).
-
-
-
-Designed modern, dark-themed, glassy Login and Register pages.
-
-
-
-Styled and displayed all form field validation errors (red messages, highlights).
-
-
-
-Project Structure
-
-
-
-Organized templates under /templates/accounts/.
-
-
-
-Added templatetags/form\_tags.py for custom as\_widget filter.
-
-
-
-Configured settings.py with DIRS = \[BASE\_DIR / "templates"] for clean template loading.
-
-
-
-Version Control
-
-
-
-Initialized local Git repository.
-
-
-
-Added .gitignore (excludes env/, .env, node\_modules/, etc.).
-
-
-
-Connected and pushed project to GitHub:
-
-https://github.com/Dekusta412/CSIT327-G5-SynchSphere.git
-
-
-
-Added requirements.txt for reproducible setup.
-
-
-
-Prepared .env.example for future collaborators.
+Overview
+This is the project's initial public release of SynchSphere — a Django-based time synchronization and notification system designed to help teams coordinate meetings across time zones.
+
+Added
+- Project scaffolding: Django project, `env` virtual environment, and a `requirements.txt` for reproducible setup.
+- Environment handling with `.env` support.
+- Authentication system:
+	- `accounts` app with registration and login flows.
+	- Registration uses a custom `SignUpForm` (extends Django's `UserCreationForm`) and enforces unique email addresses.
+	- Login uses Django's `AuthenticationForm`.
+	- Secure password validation via Django's built-in validators.
+- Basic UI:
+	- Login and Register pages with a modern dark-themed style (Tailwind via CDN), form validation messages and custom widgets via `templatetags/form_tags.py`.
+- Project layout:
+	- Templates organized under `/templates/accounts/` and project-level template dir configured in `settings.py`.
+- Dev tooling and VCS:
+	- `.gitignore` configured to exclude `env/`, `.env`, and other local artifacts.
+	- Initial push to GitHub: https://github.com/Dekusta412/CSIT327-G5-SynchSphere.git
+
+Notes
+- This release establishes the core user flows and project structure. Subsequent releases will focus on polish, security hardening, and additional features.
