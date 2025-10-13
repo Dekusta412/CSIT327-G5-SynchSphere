@@ -19,5 +19,27 @@
   {% endif %}
 
   {% block content %}{% endblock %}
+  <script>
+    // Simple SSE listener for development: listens to /events/ and shows messages
+    if (typeof EventSource !== 'undefined') {
+      const es = new EventSource('/events/');
+      es.addEventListener('connected', function(e){ console.debug('SSE connected') });
+      es.onmessage = function(e){
+        // default message
+        const el = document.createElement('div');
+        el.className = 'fixed bottom-6 right-6 bg-gray-800 border border-gray-700 text-sm px-4 py-2 rounded-lg shadow-lg';
+        el.textContent = e.data;
+        document.body.appendChild(el);
+        setTimeout(()=> el.remove(), 5000);
+      };
+      es.addEventListener('user.logged_in', function(e){
+        const el = document.createElement('div');
+        el.className = 'fixed bottom-6 right-6 bg-green-700 text-sm px-4 py-2 rounded-lg shadow-lg';
+        el.textContent = 'User logged in: ' + e.data;
+        document.body.appendChild(el);
+        setTimeout(()=> el.remove(), 5000);
+      });
+    }
+  </script>
 </body>
 </html>

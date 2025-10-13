@@ -6,6 +6,16 @@ Format conventions
 - Version header: `Version X.Y.Z — YYYY-MM-DD` (date optional)
 - Sections: Added / Changed / Fixed / Notes
 
+Version 1.1.1 — 2025-10-13
+
+Highlights
+- Verified SMTP sending using environment credentials and added guidance for Gmail App Passwords.
+- Added a lightweight development SSE endpoint (`/events/`) and client to receive real-time auth events (login/register/logout) while developing.
+- Improved password-reset email templates (HTML and subject) and ensured the reset emails are sent from the configured `DEFAULT_FROM_EMAIL`.
+
+Notes
+- SSE implementation is in-memory and intended for development only; use Channels + Redis for production-grade real-time messaging.
+
 ---
 
 Version 1.1.0 — 2025-10-13
