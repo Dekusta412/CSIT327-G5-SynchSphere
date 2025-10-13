@@ -102,7 +102,7 @@ Added .gitignore (excludes env/, .env, node\_modules/, etc.).
 
 Connected and pushed project to GitHub:
 
-https://github.com/DienMichael/SynchSphere
+https://github.com/Dekusta412/CSIT327-G5-SynchSphere.git
 
 
 
@@ -122,7 +122,7 @@ To set up locally after cloning:
 
 
 
-git clone https://github.com/DienMichael/SynchSphere.git
+git clone https://github.com/Dekusta412/CSIT327-G5-SynchSphere.git
 
 cd SynchSphere
 
