@@ -45,7 +45,7 @@ def register_view(request):
                 publish_event('user.registered', user.username)
             except Exception:
                 pass
-            return redirect("home")
+            return redirect("dashboard:dashboard")
     else:
         form = SignUpForm()
     return render(request, "accounts/register.html", {"form": form})
@@ -61,7 +61,7 @@ def login_view(request):
                 publish_event('user.logged_in', user.username)
             except Exception:
                 pass
-            return redirect("home")
+            return redirect("dashboard:dashboard")
     else:
         form = AuthenticationForm()
     return render(request, "accounts/login.html", {"form": form})

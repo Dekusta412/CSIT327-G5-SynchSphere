@@ -1,0 +1,160 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% block page_title %}Settings{% endblock %}
+
+{% block dashboard_content %}
+<div class="space-y-6 max-w-4xl">
+  <!-- Header -->
+  <div>
+    <h2 class="text-2xl font-bold text-white">Settings</h2>
+    <p class="text-gray-400 mt-1">Manage your account preferences and security</p>
+  </div>
+
+  <!-- Account Information -->
+  <div class="bg-gray-800 rounded-lg border border-gray-700">
+    <div class="p-6 border-b border-gray-700">
+      <h3 class="text-lg font-semibold text-white">Account Information</h3>
+    </div>
+    <div class="p-6">
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="update_profile" value="1">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-300 text-sm mb-2">Username</label>
+            {{ user_form.username }}
+            {% if user_form.username.errors %}
+            <p class="text-red-400 text-xs mt-1">{{ user_form.username.errors }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="block text-gray-300 text-sm mb-2">Email</label>
+            {{ user_form.email }}
+            {% if user_form.email.errors %}
+            <p class="text-red-400 text-xs mt-1">{{ user_form.email.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-300 text-sm mb-2">First Name</label>
+            {{ user_form.first_name }}
+            {% if user_form.first_name.errors %}
+            <p class="text-red-400 text-xs mt-1">{{ user_form.first_name.errors }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="block text-gray-300 text-sm mb-2">Last Name</label>
+            {{ user_form.last_name }}
+            {% if user_form.last_name.errors %}
+            <p class="text-red-400 text-xs mt-1">{{ user_form.last_name.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+          Update Account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Profile Settings -->
+  <div class="bg-gray-800 rounded-lg border border-gray-700">
+    <div class="p-6 border-b border-gray-700">
+      <h3 class="text-lg font-semibold text-white">Profile Settings</h3>
+    </div>
+    <div class="p-6">
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="update_profile" value="1">
+        
+        <div>
+          <label class="block text-gray-300 text-sm mb-2">Timezone</label>
+          {{ profile_form.timezone }}
+          {% if profile_form.timezone.errors %}
+          <p class="text-red-400 text-xs mt-1">{{ profile_form.timezone.errors }}</p>
+          {% endif %}
+          <p class="text-gray-500 text-xs mt-1">All events will be displayed in your selected timezone</p>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center space-x-3">
+            {{ profile_form.email_notifications }}
+            <label class="text-gray-300">Enable Email Notifications</label>
+          </div>
+          <div class="flex items-center space-x-3">
+            {{ profile_form.web_notifications }}
+            <label class="text-gray-300">Enable Web Notifications</label>
+          </div>
+        </div>
+
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+          Update Profile
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Change Password -->
+  <div class="bg-gray-800 rounded-lg border border-gray-700">
+    <div class="p-6 border-b border-gray-700">
+      <h3 class="text-lg font-semibold text-white">Change Password</h3>
+    </div>
+    <div class="p-6">
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="change_password" value="1">
+        
+        <div>
+          <label class="block text-gray-300 text-sm mb-2">Old Password</label>
+          {{ password_form.old_password }}
+          {% if password_form.old_password.errors %}
+          <p class="text-red-400 text-xs mt-1">{{ password_form.old_password.errors }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-gray-300 text-sm mb-2">New Password</label>
+          {{ password_form.new_password1 }}
+          {% if password_form.new_password1.errors %}
+          <p class="text-red-400 text-xs mt-1">{{ password_form.new_password1.errors }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-gray-300 text-sm mb-2">Confirm New Password</label>
+          {{ password_form.new_password2 }}
+          {% if password_form.new_password2.errors %}
+          <p class="text-red-400 text-xs mt-1">{{ password_form.new_password2.errors }}</p>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+          Change Password
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="bg-red-900/20 rounded-lg border border-red-800">
+    <div class="p-6 border-b border-red-800">
+      <h3 class="text-lg font-semibold text-red-400">Danger Zone</h3>
+    </div>
+    <div class="p-6">
+      <p class="text-gray-300 mb-4">Logout from your account. You will need to login again to access your dashboard.</p>
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="logout" value="1">
+        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+          Logout
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

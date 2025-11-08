@@ -7,7 +7,10 @@
       <p class="text-gray-400 mt-2">Collaborate and sync with your team.</p>
       {% if user.is_authenticated %}
         <p class="text-sm text-gray-300 mt-2">You are logged in as <strong>{{ user.username }}</strong>.</p>
-        <a href="{% url 'accounts:logout' %}" class="text-blue-400 hover:underline">Logout</a>
+        <div class="mt-4 space-x-4">
+          <a href="{% url 'dashboard:dashboard' %}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-200">Go to Dashboard</a>
+          <a href="{% url 'accounts:logout' %}" class="text-blue-400 hover:underline">Logout</a>
+        </div>
       {% else %}
         <div class="mt-4 space-x-4">
           <a href="{% url 'accounts:login' %}" class="text-blue-400 hover:underline">Login</a>

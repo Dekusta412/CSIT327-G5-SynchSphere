@@ -4,10 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SynchSphere</title>
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CDN - optimized loading -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <!-- Preconnect to CDN for faster loading -->
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 </head>
 <body class="bg-gradient-to-b from-gray-900 to-gray-800 min-h-screen text-white">
+  <!-- Loading overlay -->
+  <div id="pageLoader" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-[9999] flex items-center justify-center hidden">
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+      <p class="text-white text-lg">Loading...</p>
+    </div>
+  </div>
   {% if messages %}
   <div class="fixed top-4 right-4 z-50">
     {% for message in messages %}
@@ -20,26 +31,60 @@
 
   {% block content %}{% endblock %}
   <script>
-    // Simple SSE listener for development: listens to /events/ and shows messages
-    if (typeof EventSource !== 'undefined') {
-      const es = new EventSource('/events/');
-      es.addEventListener('connected', function(e){ console.debug('SSE connected') });
-      es.onmessage = function(e){
-        // default message
-        const el = document.createElement('div');
-        el.className = 'fixed bottom-6 right-6 bg-gray-800 border border-gray-700 text-sm px-4 py-2 rounded-lg shadow-lg';
-        el.textContent = e.data;
-        document.body.appendChild(el);
-        setTimeout(()=> el.remove(), 5000);
-      };
-      es.addEventListener('user.logged_in', function(e){
-        const el = document.createElement('div');
-        el.className = 'fixed bottom-6 right-6 bg-green-700 text-sm px-4 py-2 rounded-lg shadow-lg';
-        el.textContent = 'User logged in: ' + e.data;
-        document.body.appendChild(el);
-        setTimeout(()=> el.remove(), 5000);
+    // Page transition optimization
+    (function() {
+      const loader = document.getElementById('pageLoader');
+      const links = document.querySelectorAll('a[href^="/dashboard/"], a[href^="/accounts/"]');
+      
+      // Show loader on navigation
+      links.forEach(link => {
+        link.addEventListener('click', function(e) {
+          if (!this.target || this.target === '_self') {
+            loader.classList.remove('hidden');
+          }
+        });
       });
-    }
+      
+      // Hide loader when page is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          setTimeout(() => loader.classList.add('hidden'), 100);
+        });
+      } else {
+        setTimeout(() => loader.classList.add('hidden'), 100);
+      }
+      
+      // Optimized SSE listener - only for authenticated users, lazy loaded
+      {% if user.is_authenticated %}
+      if (typeof EventSource !== 'undefined') {
+        // Delay SSE connection to not block page load
+        setTimeout(() => {
+          try {
+            const es = new EventSource('/events/');
+            const msgClass = 'fixed bottom-6 right-6 text-sm px-4 py-2 rounded-lg shadow-lg z-50';
+            const removeMsg = (el) => setTimeout(() => el.remove(), 5000);
+            
+            es.onmessage = function(e){
+              const el = document.createElement('div');
+              el.className = msgClass + ' bg-gray-800 border border-gray-700';
+              el.textContent = e.data;
+              document.body.appendChild(el);
+              removeMsg(el);
+            };
+            es.addEventListener('user.logged_in', function(e){
+              const el = document.createElement('div');
+              el.className = msgClass + ' bg-green-700';
+              el.textContent = 'User logged in: ' + e.data;
+              document.body.appendChild(el);
+              removeMsg(el);
+            });
+          } catch(e) {
+            // Silently fail if SSE not available
+          }
+        }, 1000);
+      }
+      {% endif %}
+    })();
   </script>
 </body>
 </html>
