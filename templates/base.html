@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,13 +10,69 @@
   <link rel="preconnect" href="https://cdn.tailwindcss.com">
   <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  
+  <!-- Smooth page transition styles -->
+  <style>
+    /* Smooth fade transitions */
+    .page-transition {
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+    
+    .page-transition.loaded {
+      opacity: 1;
+    }
+    
+    /* Enhanced loader with pulsing effect */
+    .loader-container {
+      backdrop-filter: blur(4px);
+      background: rgba(17, 24, 39, 0.95);
+    }
+    
+    .loader-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: .5;
+      }
+    }
+    
+    /* Smooth content fade-in */
+    .content-wrapper {
+      animation: fadeIn 0.4s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Hide loader immediately on page load */
+    .no-js #pageLoader {
+      display: none !important;
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-b from-gray-900 to-gray-800 min-h-screen text-white">
-  <!-- Loading overlay -->
-  <div id="pageLoader" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-[9999] flex items-center justify-center hidden">
+<body class="bg-gradient-to-b from-gray-900 to-gray-800 min-h-screen text-white page-transition">
+  <!-- Enhanced Loading overlay -->
+  <div id="pageLoader" class="fixed inset-0 loader-container z-[9999] flex items-center justify-center transition-opacity duration-300">
     <div class="text-center">
-      <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-      <p class="text-white text-lg">Loading...</p>
+      <div class="loader-pulse mb-4">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+      <p class="text-white text-lg font-medium">Loading...</p>
+      <p class="text-gray-400 text-sm mt-2">Preparing your experience</p>
     </div>
   </div>
   {% if messages %}
@@ -29,30 +85,73 @@
   </div>
   {% endif %}
 
-  {% block content %}{% endblock %}
+  <!-- Main content wrapper with smooth transitions -->
+  <div id="mainContent" class="content-wrapper">
+    {% block content %}{% endblock %}
+  </div>
   <script>
-    // Page transition optimization
+    // Enhanced page transition optimization
     (function() {
       const loader = document.getElementById('pageLoader');
+      const mainContent = document.getElementById('mainContent');
+      const body = document.body;
+      
+      // Add no-js class removal for progressive enhancement
+      document.documentElement.classList.remove('no-js');
+      
+      // Initialize page with smooth fade-in
+      window.addEventListener('load', function() {
+        // Add loaded class for smooth transition
+        body.classList.add('loaded');
+        
+        // Hide loader with fade-out effect
+        setTimeout(() => {
+          if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => {
+              loader.style.display = 'none';
+            }, 300);
+          }
+        }, 100);
+      });
+      
+      // Handle navigation with smooth transitions
       const links = document.querySelectorAll('a[href^="/dashboard/"], a[href^="/accounts/"]');
       
-      // Show loader on navigation
       links.forEach(link => {
         link.addEventListener('click', function(e) {
           if (!this.target || this.target === '_self') {
-            loader.classList.remove('hidden');
+            // Fade out current content
+            if (mainContent) {
+              mainContent.style.opacity = '0';
+              mainContent.style.transform = 'translateY(10px)';
+            }
+            
+            // Show loader with fade-in
+            if (loader) {
+              loader.style.display = 'flex';
+              loader.style.opacity = '1';
+            }
           }
         });
       });
       
-      // Hide loader when page is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-          setTimeout(() => loader.classList.add('hidden'), 100);
+      // Handle form submissions with smooth transitions
+      const forms = document.querySelectorAll('form[method="post"]');
+      forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+          // Only show loader for non-AJAX forms
+          if (!form.hasAttribute('data-no-loader')) {
+            if (mainContent) {
+              mainContent.style.opacity = '0';
+            }
+            if (loader) {
+              loader.style.display = 'flex';
+              loader.style.opacity = '1';
+            }
+          }
         });
-      } else {
-        setTimeout(() => loader.classList.add('hidden'), 100);
-      }
+      });
       
       // Optimized SSE listener - only for authenticated users, lazy loaded
       {% if user.is_authenticated %}
@@ -62,7 +161,9 @@
           try {
             const es = new EventSource('/events/');
             const msgClass = 'fixed bottom-6 right-6 text-sm px-4 py-2 rounded-lg shadow-lg z-50';
-            const removeMsg = (el) => setTimeout(() => el.remove(), 5000);
+            
+            // Define removeMsg function before using it
+            const removeMsg = (el) => setTimeout(() => el && el.remove(), 5000);
             
             es.onmessage = function(e){
               const el = document.createElement('div');
@@ -80,6 +181,7 @@
             });
           } catch(e) {
             // Silently fail if SSE not available
+            console.log('SSE not available:', e);
           }
         }, 1000);
       }

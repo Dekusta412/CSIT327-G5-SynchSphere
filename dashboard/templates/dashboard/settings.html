@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="flex">
+  <!-- Sidebar (reused markup simplified) -->
+  <aside class="sidebar w-64 bg-gray-900 min-h-screen p-6 hidden md:block">
+    <div class="logo flex items-center gap-3 mb-8">
+      <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">{{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}</div>
+      <div>
+        <h3 class="font-semibold">SyncSphere</h3>
+        <p class="text-xs text-gray-400">Meeting Coordinator</p>
+      </div>
+    </div>
+
+    <nav>
+      <ul class="space-y-3 text-sm">
+        <li><a href="{% url 'dashboard:dashboard_home' %}" class="text-gray-300 hover:text-white">Dashboard</a></li>
+        <li><a href="#" class="text-gray-300 hover:text-white">Calendar</a></li>
+        <li><a href="#" class="text-gray-300 hover:text-white">Time Converter</a></li>
+        <li><a href="{% url 'dashboard:settings' %}" class="font-medium text-white">Settings</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 p-8">
+    <div class="max-w-5xl mx-auto">
+      <h1 class="text-2xl font-semibold mb-6">Settings</h1>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Left column: account card -->
+        <div class="md:col-span-2 bg-gray-800 rounded-lg p-6">
+          <h2 class="text-lg font-medium mb-4">Account Information</h2>
+
+          <div class="flex items-center gap-6 mb-6">
+            <div class="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center text-xl font-bold">{{ user.first_name|default:"A"|slice:":1" }}{{ user.last_name|default:"J"|slice:":1" }}</div>
+            <div class="flex-1">
+              <button class="bg-gray-700 px-3 py-2 rounded mr-3">Change Photo</button>
+              <a href="#" class="text-red-400 ml-2">Remove Photo</a>
+            </div>
+          </div>
+
+          <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm text-gray-300 mb-1">Full Name</label>
+                <input type="text" name="full_name" placeholder="Enter your full name" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white">
+              </div>
+              <div>
+                <label class="block text-sm text-gray-300 mb-1">Email Address</label>
+                <input type="email" name="email" placeholder="Enter your email address" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm text-gray-300 mb-1">Phone Number</label>
+                <input type="text" name="phone" placeholder="Enter your mobile number (e.g. +63 9XX XXX XXXX)" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white">
+              </div>
+              <div>
+                <label class="block text-sm text-gray-300 mb-1">Location</label>
+                <input type="text" name="location" placeholder="Enter your city and province" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-300 mb-1">Time Zone</label>
+              <select name="timezone" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white">
+                <option value="" disabled selected>Select your timezone</option>
+                <option value="Asia/Manila">Philippine Time (Asia/Manila)</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-300 mb-1">Bio</label>
+              <textarea name="bio" rows="3" placeholder="Write a short description about yourself" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"></textarea>
+            </div>
+
+            <div>
+              <button type="submit" class="bg-white text-black px-4 py-2 rounded">Save Changes</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right column: panel -->
+        <aside class="bg-gray-800 rounded-lg p-6">
+          <h3 class="text-sm text-gray-300 mb-4">Theme</h3>
+          <div class="mb-6">
+            <select class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white">
+              <option value="" disabled selected>Choose theme</option>
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+
+          <div class="mb-6">
+            <h4 class="text-sm text-gray-300 mb-2">Quick Actions</h4>
+            <button class="w-full text-left bg-gray-900 border border-gray-700 rounded px-3 py-2 mb-2">Export Data</button>
+            <button class="w-full text-left bg-gray-900 border border-gray-700 rounded px-3 py-2 mb-2">Language Settings</button>
+            <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="w-full text-left text-red-400 border border-gray-700 rounded px-3 py-2">Logout</button></form>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}

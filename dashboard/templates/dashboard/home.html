@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncSphere Dashboard</title>
+    <link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <img src="{% static 'dashboard/images/logo.png' %}" alt="SyncSphere Logo" class="logo-icon">
+            <div class="logo-text">
+                <h2>SyncSphere</h2>
+                <p>Meeting Coordinator</p>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li class="active"><a href="{% url 'dashboard:dashboard_home' %}">Dashboard</a></li>
+                <li><a href="#">Calendar</a></li>
+                <li><a href="#">Time Converter</a></li>
+                <li><a href="{% url 'dashboard:settings' %}">Settings</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main">
+        <header class="topbar">
+            <h1>Dashboard</h1>
+            <div class="topbar-right">
+                <button class="new-meeting">+ New Meeting</button>
+                <div class="profile-circle">AJ</div>
+            </div>
+        </header>
+
+        <section class="welcome">
+            <p>Welcome back! Here’s what’s happening with your meetings.</p>
+        </section>
+
+        <section class="cards">
+            <div class="card">
+                <h3>Today's Meetings</h3>
+                <p class="number">0</p>
+                <p class="small">Meetings scheduled for today</p>
+            </div>
+            <div class="card">
+                <h3>Upcoming</h3>
+                <p class="number">4</p>
+                <p class="small">Meetings in the next 7 days</p>
+            </div>
+            <div class="card">
+                <h3>Time Zones</h3>
+                <p class="number">4</p>
+                <p class="small">Active time zones in use</p>
+            </div>
+            <div class="card">
+                <h3>Participants</h3>
+                <p class="number">12</p>
+                <p class="small">Total meeting participants</p>
+            </div>
+        </section>
+
+        <section class="meetings">
+            <h2>Upcoming Meetings</h2>
+            <p>Your next meetings across all time zones</p>
+
+            <div class="meeting-item">
+                <div class="icon-box">
+                    <span class="icon">📹</span>
+                </div>
+                <div class="details">
+                    <h3>Global Product Strategy Review <span class="badge">upcoming</span></h3>
+                    <p>Quarterly review of our product roadmap with international stakeholders</p>
+                    <p class="meta">🕒 Mon, Jan 15 at 10:00 PM &nbsp; 👥 3 attendees &nbsp; 🌐 UTC</p>
+                </div>
+                <button class="view-btn">View Details</button>
+            </div>
+
+            <div class="meeting-item">
+                <div class="icon-box">
+                    <span class="icon">📹</span>
+                </div>
+                <div class="details">
+                    <h3>Asia-Pacific Team Sync <span class="badge">upcoming</span></h3>
+                    <p>Weekly sync with APAC team members</p>
+                    <p class="meta">🕒 Tue, Jan 16 at 10:00 AM &nbsp; 👥 2 attendees &nbsp; 🌐 Asia/Shanghai</p>
+                </div>
+                <button class="view-btn">View Details</button>
+            </div>
+
+            <div class="meeting-item">
+                <div class="icon-box">
+                    <span class="icon">📍</span>
+                </div>
+                <div class="details">
+                    <h3>Client Presentation – London Office <span class="badge">upcoming</span></h3>
+                    <p>Product demo for potential enterprise client</p>
+                    <p class="meta">🕒 Wed, Jan 17 at 6:00 PM &nbsp; 👥 2 attendees &nbsp; 🌐 Europe/London</p>
+                </div>
+                <button class="view-btn">View Details</button>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
