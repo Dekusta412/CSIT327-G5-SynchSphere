@@ -1,8 +1,11 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
-from .forms import SignUpForm
+from django.contrib.auth.models import User
+from .forms import SignUpForm, EditUserForm, EditProfileForm
+from dashboard.models import UserProfile
 
 try:
     from SynchSphere.realtime import publish_event
@@ -75,3 +78,35 @@ def logout_view(request):
         pass
     # Redirect to the site home page after logout
     return redirect("home")
+
+
+@login_required
+def edit_profile(request):
+    """Allow users to edit their account and profile (save or cancel)."""
+    user = request.user
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+
+    if request.method == 'POST':
+        if 'cancel' in request.POST:
+            return redirect('dashboard:profile')
+
+        user_form = EditUserForm(request.POST, instance=user)
+        profile_form = EditProfileForm(request.POST, request.FILES, instance=profile)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile_form.save()
+            messages.success(request, 'Profile updated successfully.')
+            try:
+                publish_event('user.profile.updated', user.username)
+            except Exception:
+                pass
+            return redirect('dashboard:profile')
+    else:
+        user_form = EditUserForm(instance=user)
+        profile_form = EditProfileForm(instance=profile)
+
+    return render(request, 'accounts/edit_profile.html', {
+        'user_form': user_form,
+        'profile_form': profile_form,
+    })

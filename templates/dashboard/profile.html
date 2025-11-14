@@ -1,4 +1,5 @@
 {% extends "dashboard/base_dashboard.html" %}
+{% load format_tags %}
 {% block page_title %}My Profile{% endblock %}
 
 {% block dashboard_content %}
@@ -21,11 +22,12 @@
         <!-- Avatar Section -->
         <div class="flex items-center space-x-6">
           <div class="flex-shrink-0">
-            {% if profile.avatar %}
-            <img src="{{ profile.avatar.url }}" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover border-2 border-gray-600">
+            {% avatar_url profile as avatar %}
+            {% if avatar %}
+            <img src="{{ avatar }}" alt="Profile Picture" class="w-24 h-24 rounded-full object-cover border-2 border-gray-600">
             {% else %}
             <div class="w-24 h-24 rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center">
-              <span class="text-3xl font-bold text-gray-400">{{ user.username|first|upper }}</span>
+              <span class="text-3xl font-bold text-gray-400">{{ user|initials }}</span>
             </div>
             {% endif %}
           </div>
