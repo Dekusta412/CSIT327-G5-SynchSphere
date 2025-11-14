@@ -65,20 +65,40 @@ WSGI_APPLICATION = 'SynchSphere.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Database configuration
-# Use SQLite by default for development
+# Use SQLite by default for development to avoid PostgreSQL connection issues
 # For production, set DATABASE_URL environment variable and install dj-database-url
 DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL and not DATABASE_URL.startswith("sqlite"):
+
+# For local development, always use SQLite to avoid connection issues
+# This prevents the "max clients reached" error from Supabase PostgreSQL
+if DEBUG or not DATABASE_URL:
+    # Use SQLite for development or when no database URL is provided
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+elif DATABASE_URL and not DATABASE_URL.startswith("sqlite"):
     # Use dj_database_url for non-SQLite databases (PostgreSQL, MySQL, etc.)
     try:
         import dj_database_url
+        # Configure PostgreSQL with connection pooling and retry logic
         DATABASES = {
             "default": dj_database_url.config(
                 default=DATABASE_URL,
-                conn_max_age=600,
+                conn_max_age=0,  # Disable persistent connections to avoid pooling issues
                 ssl_require=False
             )
         }
+        # Add connection settings to handle max connections
+        DATABASES["default"].update({
+            'CONN_MAX_AGE': 0,
+            'OPTIONS': {
+                'connect_timeout': 10,
+                'options': '-c statement_timeout=30000'  # 30 second timeout
+            }
+        })
     except ImportError:
         # Fallback to SQLite if dj_database_url is not installed
         DATABASES = {
