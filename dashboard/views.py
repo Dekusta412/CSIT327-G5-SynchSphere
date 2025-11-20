@@ -7,8 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.db.models import Q
 from .models import Event, Reminder, Notification, UserProfile
-from .forms import EventForm, ReminderForm, UserProfileForm, UserUpdateForm
-from django.contrib.auth.forms import PasswordChangeForm
+from .forms import EventForm, ReminderForm, UserProfileForm, UserUpdateForm, CustomPasswordChangeForm
 from .utils import (
     get_user_profile,
     get_unread_count,
@@ -239,6 +238,11 @@ def settings_view(request):
     user = request.user
     profile = get_user_profile(user)
     
+    # Initialize forms (will be overridden if POST)
+    profile_form = UserProfileForm(instance=profile)
+    user_form = UserUpdateForm(instance=user)
+    password_form = CustomPasswordChangeForm(user)
+    
     if request.method == 'POST':
         if 'update_profile' in request.POST:
             profile_form = UserProfileForm(request.POST, instance=profile)
@@ -251,21 +255,20 @@ def settings_view(request):
                 messages.success(request, 'Profile updated successfully.')
                 return redirect('dashboard:settings')
         elif 'change_password' in request.POST:
-            password_form = PasswordChangeForm(user, request.POST)
+            password_form = CustomPasswordChangeForm(user, request.POST)
             if password_form.is_valid():
-                user = password_form.save()
-                update_session_auth_hash(request, user)
+                updated_user = password_form.save()
+                update_session_auth_hash(request, updated_user)
                 messages.success(request, 'Password changed successfully.')
                 return redirect('dashboard:settings')
+            else:
+                # Form is invalid, show errors - other forms stay initialized
+                messages.error(request, 'Please correct the errors below.')
         elif 'logout' in request.POST:
             from django.contrib.auth import logout
             logout(request)
             messages.info(request, 'You have been logged out.')
             return redirect('accounts:login')
-    else:
-        profile_form = UserProfileForm(instance=profile)
-        user_form = UserUpdateForm(instance=user)
-        password_form = PasswordChangeForm(user)
     
     unread_count = get_unread_count(user)
     

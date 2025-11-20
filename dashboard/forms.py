@@ -5,6 +5,28 @@ from .models import Event, Reminder, UserProfile
 import pytz
 
 
+class CustomPasswordChangeForm(PasswordChangeForm):
+    """Custom password change form with styled fields"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['old_password'].widget.attrs.update({
+            'class': 'w-full bg-transparent border-none text-white placeholder-gray-400 focus:outline-none',
+            'placeholder': 'Current password',
+            'autocomplete': 'current-password'
+        })
+        self.fields['new_password1'].widget.attrs.update({
+            'class': 'w-full bg-transparent border-none text-white placeholder-gray-400 focus:outline-none',
+            'placeholder': 'New password',
+            'autocomplete': 'new-password'
+        })
+        self.fields['new_password2'].widget.attrs.update({
+            'class': 'w-full bg-transparent border-none text-white placeholder-gray-400 focus:outline-none',
+            'placeholder': 'Confirm new password',
+            'autocomplete': 'new-password'
+        })
+
+
 class EventForm(forms.ModelForm):
     """Form for creating/editing events"""
     start_time = forms.DateTimeField(

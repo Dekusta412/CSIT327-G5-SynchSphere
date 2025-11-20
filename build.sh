@@ -12,4 +12,7 @@ python manage.py makemigrations
 python manage.py migrate --noinput
 echo "==> Collecting static files"
 python manage.py collectstatic --noinput
+echo "==> Creating media directories"
+mkdir -p media/avatars
+chmod -R 755 media
 echo "==> Build complete"
