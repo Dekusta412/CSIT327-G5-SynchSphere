@@ -20,6 +20,6 @@ urlpatterns = [
     path('events/', realtime.event_stream, name='events'),
 ]
 
-# Serve media files in development
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files (in production, consider using cloud storage or nginx)
+# For now, serve via Django - in production, configure your web server to serve /media/
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
