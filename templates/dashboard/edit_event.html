@@ -11,6 +11,7 @@
   <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
     <form method="post" class="space-y-4">
       {% csrf_token %}
+      <input type="hidden" name="client_tz" id="client_tz">
       
       <div>
         <label class="block text-gray-300 text-sm mb-2">Title *</label>
@@ -62,6 +63,13 @@
     </form>
   </div>
 </div>
+<script>
+  (function(){
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    var el = document.getElementById('client_tz');
+    if (el) { el.value = tz; }
+  })();
+</script>
 {% endblock %}
 
 

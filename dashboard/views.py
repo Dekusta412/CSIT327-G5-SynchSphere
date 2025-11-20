@@ -9,7 +9,13 @@ from django.db.models import Q
 from .models import Event, Reminder, Notification, UserProfile
 from .forms import EventForm, ReminderForm, UserProfileForm, UserUpdateForm
 from django.contrib.auth.forms import PasswordChangeForm
-from .utils import get_user_profile, get_unread_count, invalidate_user_cache, get_timezone
+from .utils import (
+    get_user_profile,
+    get_unread_count,
+    invalidate_user_cache,
+    get_timezone,
+    convert_to_utc,
+)
 from datetime import datetime, timedelta
 import json
 import pytz  # Still needed for UTC
@@ -36,19 +42,34 @@ def dashboard_view(request):
     )
     unread_count = get_unread_count(user)
     
-    # Get upcoming events (next 7 days) - optimized query
-    upcoming_events = Event.objects.filter(
+    # Get upcoming events (next 7 days)
+    upcoming_events_qs = Event.objects.filter(
         user=user,
         start_time__gte=now,
         start_time__lte=now + timedelta(days=7)
     ).order_by('start_time')[:5].only('id', 'title', 'start_time', 'end_time', 'location')
+    upcoming_events = list(upcoming_events_qs)
+    upcoming_events_payload = [
+        {
+            'id': event.id,
+            'title': event.title,
+            'description': '',
+            'start': event.start_time.astimezone(pytz.UTC).isoformat(),
+            'end': event.end_time.astimezone(pytz.UTC).isoformat(),
+            'location': event.location or '',
+        }
+        for event in upcoming_events
+    ]
     
     context = {
         'upcoming_reminders': upcoming_reminders,
         'notifications': notifications,
         'unread_count': unread_count,
         'upcoming_events': upcoming_events,
+        'upcoming_events_json': json.dumps(upcoming_events_payload),
+        'has_upcoming_events': bool(upcoming_events_payload),
         'profile': profile,
+        'profile_timezone': profile.timezone,
     }
     
     return render(request, 'dashboard/dashboard.html', context)
@@ -64,23 +85,32 @@ def calendar_view(request):
     events = Event.objects.filter(user=user).order_by('start_time').only(
         'id', 'title', 'start_time', 'end_time', 'description', 'location'
     )[:100]  # Limit to 100 events for initial load
+    # Prepare display-friendly datetimes for server-rendered lists (converted to user's timezone)
+    try:
+        user_tz = get_timezone(profile.timezone)
+        for ev in events:
+            ev.start_time_display = ev.start_time.astimezone(user_tz)
+            ev.end_time_display = ev.end_time.astimezone(user_tz)
+    except Exception:
+        # Fallback: leave original datetimes if timezone conversion fails
+        pass
     
-    # Convert events to JSON for calendar - optimized timezone conversion
-    user_tz = get_timezone(profile.timezone)
+    # Send event datetimes to the client in UTC ISO format (with offset)
+    # The browser/FullCalendar will display them in the user's local timezone.
     events_data = []
-    
+
     for event in events:
-        # Convert UTC to user's timezone for display
-        start_local = event.start_time.astimezone(user_tz)
-        end_local = event.end_time.astimezone(user_tz)
-        
+        # Convert stored UTC datetimes to explicit UTC ISO strings
+        start_utc = event.start_time.astimezone(pytz.UTC)
+        end_utc = event.end_time.astimezone(pytz.UTC)
+
         event_data = {
             'id': event.id,
             'title': event.title,
-            'start': start_local.isoformat(),
-            'end': end_local.isoformat(),
+            'start': start_utc.isoformat(),
+            'end': end_utc.isoformat(),
             'extendedProps': {
-                'description': (event.description or '')[:200],  # Limit description length
+                'description': (event.description or '')[:200],
                 'location': event.location or '',
             },
         }
@@ -101,41 +131,59 @@ def calendar_view(request):
 
 @login_required
 def timezone_conversion_view(request):
-    """Timezone conversion page"""
+    """Interactive timezone conversion dashboard powered by client-side formatting."""
     user = request.user
     profile = get_user_profile(user)
     
-    # Get user's events - optimized query
     events = Event.objects.filter(user=user).order_by('start_time').only(
         'id', 'title', 'start_time', 'end_time', 'description', 'location'
     )
     
-    # Get selected timezone from request or use profile default
-    selected_tz = request.GET.get('timezone', profile.timezone)
+    from .forms import UserProfileForm
+    timezone_choices = UserProfileForm.COUNTRY_TIMEZONES
+    timezone_label_map = dict(timezone_choices)
     
-    # Convert events to selected timezone - optimized
-    selected_tz_obj = get_timezone(selected_tz)
-    converted_events = [
+    requested_tz = request.GET.get('timezone') or profile.timezone
+    if requested_tz not in timezone_label_map:
+        requested_tz = profile.timezone
+    
+    def offset_label_for_tz(tz_name: str) -> str:
+        tz_obj = get_timezone(tz_name)
+        now_local = timezone.now().astimezone(tz_obj)
+        offset = now_local.utcoffset()
+        if not offset:
+            return "GMT"
+        total_minutes = int(offset.total_seconds() // 60)
+        sign = '+' if total_minutes >= 0 else '-'
+        hours, minutes = divmod(abs(total_minutes), 60)
+        return f"GMT{sign}{hours:02d}:{minutes:02d}"
+    
+    events_payload = [
         {
-            'event': event,
-            'start_converted': event.start_time.astimezone(selected_tz_obj),
-            'end_converted': event.end_time.astimezone(selected_tz_obj),
-            'timezone': selected_tz,
+            'id': event.id,
+            'title': event.title,
+            'description': event.description or '',
+            'start': event.start_time.astimezone(pytz.UTC).isoformat(),
+            'end': event.end_time.astimezone(pytz.UTC).isoformat(),
+            'location': event.location or '',
         }
         for event in events
     ]
     
-    # Get country-based timezones (same as in UserProfileForm)
-    from .forms import UserProfileForm
-    country_timezones = UserProfileForm.COUNTRY_TIMEZONES
-    
     unread_count = get_unread_count(user)
     
     context = {
-        'events': converted_events,
-        'selected_timezone': selected_tz,
-        'all_timezones': [tz[0] for tz in country_timezones],
-        'timezone_choices': country_timezones,
+        'events': events,
+        'events_json': json.dumps(events_payload),
+        'has_events': bool(events_payload),
+        'timezone_choices': timezone_choices,
+        'timezone_meta_json': json.dumps(timezone_label_map),
+        'default_timezone': requested_tz,
+        'default_timezone_label': timezone_label_map.get(requested_tz, requested_tz),
+        'default_timezone_offset': offset_label_for_tz(requested_tz),
+        'profile_timezone': profile.timezone,
+        'profile_timezone_label': timezone_label_map.get(profile.timezone, profile.timezone),
+        'profile_timezone_offset': offset_label_for_tz(profile.timezone),
         'profile': profile,
         'unread_count': unread_count,
     }
@@ -234,42 +282,49 @@ def settings_view(request):
 
 @login_required
 def profile_view(request):
-    """User profile page for viewing and editing profile"""
+    """Mobile-inspired profile dashboard with live stats and avatar editing."""
     user = request.user
     profile = get_user_profile(user)
-    
-    # Get stats for display - optimized queries
+
+    from .forms import UserProfileForm, UserUpdateForm
+
     total_events = Event.objects.filter(user=user).count()
     active_reminders = Reminder.objects.filter(user=user, is_sent=False).count()
-    
+
+    profile_form = UserProfileForm(instance=profile)
+    user_form = UserUpdateForm(instance=user)
+    save_success = False
+
     if request.method == 'POST':
-        if 'update_profile' in request.POST:
-            profile_form = UserProfileForm(request.POST, request.FILES, instance=profile)
-            user_form = UserUpdateForm(request.POST, instance=user)
-            
-            if profile_form.is_valid() and user_form.is_valid():
-                profile_form.save()
-                user_form.save()
-                invalidate_user_cache(user.id)  # Clear cache
-                messages.success(request, 'Profile updated successfully.')
-                return redirect('dashboard:profile')
-        elif 'cancel' in request.POST:
+        profile_form = UserProfileForm(request.POST, request.FILES, instance=profile)
+        user_form = UserUpdateForm(request.POST, instance=user)
+
+        if profile_form.is_valid() and user_form.is_valid():
+            profile_form.save()
+            user_form.save()
+            invalidate_user_cache(user.id)
+            messages.success(request, 'Profile updated successfully.')
+            save_success = True
             return redirect('dashboard:profile')
-    else:
-        profile_form = UserProfileForm(instance=profile)
-        user_form = UserUpdateForm(instance=user)
-    
+        else:
+            messages.error(request, 'Please fix the errors below.')
+
     unread_count = get_unread_count(user)
-    
+    recent_events = Event.objects.filter(user=user).order_by('-start_time')[:3]
+    recent_reminders = Reminder.objects.filter(user=user).order_by('-reminder_time')[:3]
+
     context = {
+        'profile': profile,
         'profile_form': profile_form,
         'user_form': user_form,
-        'profile': profile,
-        'unread_count': unread_count,
+        'recent_events': recent_events,
+        'recent_reminders': recent_reminders,
         'total_events': total_events,
         'active_reminders': active_reminders,
+        'unread_count': unread_count,
+        'save_success': save_success,
     }
-    
+
     return render(request, 'dashboard/profile.html', context)
 
 
@@ -282,27 +337,32 @@ def events_api(request):
         # Get events for calendar
         start = request.GET.get('start')
         end = request.GET.get('end')
-        
+
         events = Event.objects.filter(user=request.user)
-        
+
         if start and end:
-            events = events.filter(
-                Q(start_time__gte=start) | Q(end_time__lte=end)
-            )
+            try:
+                start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
+                if timezone.is_naive(start_dt):
+                    start_dt = timezone.make_aware(start_dt, pytz.UTC)
+                if timezone.is_naive(end_dt):
+                    end_dt = timezone.make_aware(end_dt, pytz.UTC)
+                events = events.filter(start_time__lte=end_dt, end_time__gte=start_dt)
+            except Exception:
+                pass
         
         events_data = []
         profile = get_user_profile(request.user)
         user_tz = get_timezone(profile.timezone)
         
         for event in events:
-            start_local = event.start_time.astimezone(user_tz)
-            end_local = event.end_time.astimezone(user_tz)
-            
+            # Send UTC ISO timestamps to the client for consistent parsing
             events_data.append({
                 'id': event.id,
                 'title': event.title,
-                'start': start_local.isoformat(),
-                'end': end_local.isoformat(),
+                'start': event.start_time.astimezone(pytz.UTC).isoformat(),
+                'end': event.end_time.astimezone(pytz.UTC).isoformat(),
                 'description': event.description,
                 'location': event.location,
             })
@@ -317,11 +377,14 @@ def events_api(request):
         if form.is_valid():
             event = form.save(commit=False)
             event.user = request.user
-            # Convert local time to UTC
             profile = get_user_profile(request.user)
-            user_tz = get_timezone(profile.timezone)
-            event.start_time = user_tz.localize(datetime.fromisoformat(data['start_time'].replace('Z', ''))).astimezone(pytz.UTC)
-            event.end_time = user_tz.localize(datetime.fromisoformat(data['end_time'].replace('Z', ''))).astimezone(pytz.UTC)
+            client_tz = data.get('client_tz')
+            tz_name = client_tz or profile.timezone
+            start_time = form.cleaned_data['start_time']
+            end_time = form.cleaned_data['end_time']
+
+            event.start_time = convert_to_utc(start_time, tz_name, treat_input_as_local=bool(client_tz))
+            event.end_time = convert_to_utc(end_time, tz_name, treat_input_as_local=bool(client_tz))
             event.save()
             return JsonResponse({'success': True, 'id': event.id})
         else:
@@ -335,24 +398,31 @@ def event_detail_api(request, event_id):
     event = get_object_or_404(Event, id=event_id, user=request.user)
     
     if request.method == 'GET':
-        profile = get_user_profile(request.user)
-        user_tz = get_timezone(profile.timezone)
-        
+        # Return UTC ISO timestamps; client will convert/display in browser timezone
         return JsonResponse({
             'id': event.id,
             'title': event.title,
             'description': event.description,
-            'start_time': event.start_time.astimezone(user_tz).isoformat(),
-            'end_time': event.end_time.astimezone(user_tz).isoformat(),
+            'start_time': event.start_time.astimezone(pytz.UTC).isoformat(),
+            'end_time': event.end_time.astimezone(pytz.UTC).isoformat(),
             'location': event.location,
         })
     
     elif request.method == 'PUT':
         data = json.loads(request.body)
         form = EventForm(data, instance=event)
-        
+
         if form.is_valid():
-            event = form.save()
+            updated = form.save(commit=False)
+            start_time = form.cleaned_data['start_time']
+            end_time = form.cleaned_data['end_time']
+            profile = get_user_profile(request.user)
+            client_tz = data.get('client_tz')
+            tz_name = client_tz or profile.timezone
+
+            updated.start_time = convert_to_utc(start_time, tz_name, treat_input_as_local=bool(client_tz))
+            updated.end_time = convert_to_utc(end_time, tz_name, treat_input_as_local=bool(client_tz))
+            updated.save()
             return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
@@ -372,21 +442,12 @@ def create_event_view(request):
         if form.is_valid():
             event = form.save(commit=False)
             event.user = request.user
-            # Convert local time to UTC
-            user_tz = get_timezone(profile.timezone)
+            client_tz = request.POST.get('client_tz') or profile.timezone
             start_time = form.cleaned_data['start_time']
             end_time = form.cleaned_data['end_time']
             
-            # If datetime is naive, localize it; if aware, convert to user_tz first then UTC
-            if timezone.is_naive(start_time):
-                event.start_time = user_tz.localize(start_time).astimezone(pytz.UTC)
-            else:
-                event.start_time = start_time.astimezone(pytz.UTC)
-            
-            if timezone.is_naive(end_time):
-                event.end_time = user_tz.localize(end_time).astimezone(pytz.UTC)
-            else:
-                event.end_time = end_time.astimezone(pytz.UTC)
+            event.start_time = convert_to_utc(start_time, client_tz, treat_input_as_local=True)
+            event.end_time = convert_to_utc(end_time, client_tz, treat_input_as_local=True)
             
             event.save()
             invalidate_user_cache(request.user.id)  # Clear cache
@@ -394,6 +455,44 @@ def create_event_view(request):
             return redirect('dashboard:calendar')
     else:
         form = EventForm()
+        # Prefill from calendar interactions
+        try:
+            user_tz = get_timezone(profile.timezone)
+            date_str = request.GET.get('date')
+            start_param = request.GET.get('start')
+            end_param = request.GET.get('end')
+            start_local = None
+            end_local = None
+            if start_param:
+                start_dt = datetime.fromisoformat(start_param.replace('Z', '+00:00'))
+                if timezone.is_naive(start_dt):
+                    start_dt = timezone.make_aware(start_dt, pytz.UTC)
+                start_local = start_dt.astimezone(user_tz)
+                if end_param:
+                    end_dt = datetime.fromisoformat(end_param.replace('Z', '+00:00'))
+                    if timezone.is_naive(end_dt):
+                        end_dt = timezone.make_aware(end_dt, pytz.UTC)
+                    end_local = end_dt.astimezone(user_tz)
+                else:
+                    end_local = start_local + timedelta(hours=1)
+            elif date_str:
+                # Default to 09:00 local time and 1-hour duration
+                try:
+                    base = datetime.strptime(date_str, '%Y-%m-%d')
+                except Exception:
+                    base = timezone.now().astimezone(user_tz)
+                start_local = base.replace(hour=9, minute=0, second=0, microsecond=0)
+                end_local = start_local + timedelta(hours=1)
+            else:
+                # Fallback: current local hour rounded
+                now_local = timezone.now().astimezone(user_tz)
+                start_local = now_local.replace(minute=0, second=0, microsecond=0)
+                end_local = start_local + timedelta(hours=1)
+            if start_local and end_local:
+                form.initial['start_time'] = start_local.strftime('%Y-%m-%dT%H:%M')
+                form.initial['end_time'] = end_local.strftime('%Y-%m-%dT%H:%M')
+        except Exception:
+            pass
     
     unread_count = get_unread_count(request.user)
     
@@ -416,19 +515,12 @@ def edit_event_view(request, event_id):
         form = EventForm(request.POST, instance=event)
         if form.is_valid():
             event = form.save(commit=False)
-            # Convert to UTC
             start_time = form.cleaned_data['start_time']
             end_time = form.cleaned_data['end_time']
+            client_tz = request.POST.get('client_tz') or profile.timezone
             
-            if timezone.is_naive(start_time):
-                event.start_time = user_tz.localize(start_time).astimezone(pytz.UTC)
-            else:
-                event.start_time = start_time.astimezone(pytz.UTC)
-            
-            if timezone.is_naive(end_time):
-                event.end_time = user_tz.localize(end_time).astimezone(pytz.UTC)
-            else:
-                event.end_time = end_time.astimezone(pytz.UTC)
+            event.start_time = convert_to_utc(start_time, client_tz, treat_input_as_local=True)
+            event.end_time = convert_to_utc(end_time, client_tz, treat_input_as_local=True)
             
             event.save()
             invalidate_user_cache(request.user.id)  # Clear cache

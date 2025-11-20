@@ -63,21 +63,9 @@
         <a href="{% url 'dashboard:calendar' %}" class="text-blue-400 hover:text-blue-300 text-sm">View All</a>
       </div>
       <div class="p-6">
-        {% if upcoming_events %}
-        <div class="space-y-4">
-          {% for event in upcoming_events %}
-          <div class="border-l-4 border-blue-600 pl-4 py-2">
-            <h4 class="text-white font-medium">{{ event.title }}</h4>
-            <p class="text-gray-400 text-sm mt-1">{{ event.start_time|date:"M d, Y g:i A" }}</p>
-            {% if event.location %}
-            <p class="text-gray-500 text-xs mt-1">📍 {{ event.location }}</p>
-            {% endif %}
-          </div>
-          {% endfor %}
+        <div class="space-y-4" id="upcomingEventsContainer">
+          <p id="noUpcomingEventsMessage" class="text-gray-400 text-center py-4 {% if has_upcoming_events %}hidden{% endif %}">No upcoming events. <a href="{% url 'dashboard:calendar' %}" class="text-blue-400 hover:underline">Create one</a></p>
         </div>
-        {% else %}
-        <p class="text-gray-400 text-center py-4">No upcoming events. <a href="{% url 'dashboard:calendar' %}" class="text-blue-400 hover:underline">Create one</a></p>
-        {% endif %}
       </div>
     </div>
 
@@ -157,6 +145,72 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function() {
+    var events = JSON.parse('{{ upcoming_events_json|escapejs }}');
+    var profileTimezone = '{{ profile_timezone }}';
+    var container = document.getElementById('upcomingEventsContainer');
+    var emptyMessage = document.getElementById('noUpcomingEventsMessage');
+    var locale = navigator.language || 'en-US';
+
+    function formatDateTime(isoString, tz) {
+      var date = new Date(isoString);
+      var dateStr = new Intl.DateTimeFormat(locale, {
+        timeZone: tz,
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(date);
+      var timeStr = new Intl.DateTimeFormat(locale, {
+        timeZone: tz,
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).format(date);
+      return dateStr + ' ' + timeStr;
+    }
+
+    function renderEvents() {
+      if (!container) return;
+      container.querySelectorAll('.dashboard-event-card').forEach(function(node) { node.remove(); });
+
+      if (!events.length) {
+        if (emptyMessage) emptyMessage.classList.remove('hidden');
+        return;
+      }
+
+      if (emptyMessage) emptyMessage.classList.add('hidden');
+
+      events.forEach(function(event) {
+        var card = document.createElement('div');
+        card.className = 'border-l-4 border-blue-600 pl-4 py-2 dashboard-event-card';
+
+        var titleEl = document.createElement('h4');
+        titleEl.className = 'text-white font-medium';
+        titleEl.textContent = event.title || 'Untitled Event';
+
+        var timeEl = document.createElement('p');
+        timeEl.className = 'text-gray-400 text-sm mt-1';
+        timeEl.textContent = formatDateTime(event.start, profileTimezone);
+
+        card.appendChild(titleEl);
+        card.appendChild(timeEl);
+
+        if (event.location) {
+          var locationEl = document.createElement('p');
+          locationEl.className = 'text-gray-500 text-xs mt-1';
+          locationEl.textContent = '📍 ' + event.location;
+          card.appendChild(locationEl);
+        }
+
+        container.appendChild(card);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', renderEvents);
+  })();
+</script>
 {% endblock %}
 
 

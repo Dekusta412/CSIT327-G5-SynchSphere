@@ -134,9 +134,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 # Media files (User uploads)
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -175,7 +172,7 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Security (production)
-if os.environ.get("DJANGO_SECURE_SSL_REDIRECT", "True").lower() == "true":
+if (not DEBUG) and os.environ.get("DJANGO_SECURE_SSL_REDIRECT", "True").lower() == "true":
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

@@ -19,6 +19,23 @@
 
   <!-- Calendar Container -->
   <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+    <style>
+      .fc .fc-col-header-cell { background-color: #374151; }
+      .fc .fc-col-header-cell-cushion { color: #ffffff; }
+      .fc-daygrid-day { cursor: pointer; }
+      .fc-daygrid-day:hover { background-color: #1f2937; }
+      .fc-timegrid-slot { cursor: pointer; }
+      .fc-theme-standard td, .fc-theme-standard th { border-color: #4b5563; }
+      .fc .fc-daygrid-day.fc-day-today { background-color: #111827; }
+      .fc-daygrid-day:hover .fc-daygrid-day-number { color: #93c5fd; }
+      .fc-timegrid-slot:hover { background-color: #111827; }
+      .fc-event, .fc-daygrid-event, .fc-timegrid-event { border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.3); cursor: pointer; }
+      .fc-event:hover { filter: brightness(1.12); }
+      .fc .fc-button { background-color: #1f2937; border-color: #374151; color: #e5e7eb; }
+      .fc .fc-button:hover { background-color: #374151; }
+      .fc .fc-toolbar-title { color: #ffffff; }
+      .fc .fc-scrollgrid { background-color: transparent; }
+    </style>
     <div id="calendar"></div>
   </div>
 
@@ -34,7 +51,11 @@
         <div class="flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer event-item" data-event-id="{{ event.id }}">
           <div class="flex-1">
             <h4 class="text-white font-medium">{{ event.title }}</h4>
-            <p class="text-gray-400 text-sm mt-1">{{ event.start_time|date:"M d, Y g:i A" }} - {{ event.end_time|date:"g:i A" }}</p>
+            <p class="text-gray-400 text-sm mt-1 event-time"
+               data-event-start="{{ event.start_time|date:"c" }}"
+               data-event-end="{{ event.end_time|date:"c" }}">
+               {{ event.start_time|date:"M d, Y g:i A" }} - {{ event.end_time|date:"g:i A" }}
+            </p>
             {% if event.location %}
             <p class="text-gray-500 text-xs mt-1">📍 {{ event.location }}</p>
             {% endif %}
@@ -63,6 +84,29 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var locale = window.defaultLocale || navigator.language || 'en-US';
+    var optionsDateTime = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+    var optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true };
+    document.querySelectorAll('.event-time').forEach(function(el) {
+      var startISO = el.getAttribute('data-event-start');
+      var endISO = el.getAttribute('data-event-end');
+      if (!startISO || !endISO) {
+        return;
+      }
+      var startDate = new Date(startISO);
+      var endDate = new Date(endISO);
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return;
+      }
+      var startStr = startDate.toLocaleString(locale, optionsDateTime);
+      var endStr = endDate.toLocaleTimeString(locale, optionsTime);
+      el.textContent = startStr + ' - ' + endStr;
+    });
+  });
+</script>
 
 <!-- FullCalendar CSS - preload for faster rendering -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" preload>
@@ -99,6 +143,38 @@
 
 <script>
   // Optimized calendar initialization - wait for FullCalendar to load
+  var eventsMap = new Map();
+  var defaultLocale = window.defaultLocale || navigator.language || 'en-US';
+  window.defaultLocale = defaultLocale;
+
+  function getTimeZoneAbbrev(date, locale) {
+    try {
+      var parts = new Intl.DateTimeFormat(locale || defaultLocale, { timeZoneName: 'short' }).formatToParts(date);
+      var tzPart = parts.find(function(part) { return part.type === 'timeZoneName'; });
+      return tzPart ? tzPart.value : '';
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function formatEventDateTime(date, locale) {
+    if (!date) return '';
+    var loc = locale || defaultLocale;
+    var fullDate = date.toLocaleDateString(loc, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    var timeStr = date.toLocaleTimeString(loc, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    var tzAbbrev = getTimeZoneAbbrev(date, loc);
+    return `${fullDate} • ${timeStr}${tzAbbrev ? ' (' + tzAbbrev + ')' : ''}`;
+  }
+
   function initCalendar() {
     if (typeof FullCalendar === 'undefined') {
       setTimeout(initCalendar, 50);
@@ -114,7 +190,9 @@
     var cancelModalBtn = document.getElementById('cancelModalBtn');
     var editEventBtn = document.getElementById('editEventBtn');
     var deleteEventBtn = document.getElementById('deleteEventBtn');
+    var eventsListEl = document.getElementById('eventsList');
     var currentEventId = null;
+    var userLocale = defaultLocale;
     
     // Use requestAnimationFrame for smooth initialization
     requestAnimationFrame(function() {
@@ -125,29 +203,46 @@
         center: 'title',
         right: 'dayGridMonth,timeGridWeek,timeGridDay'
       },
-      events: {{ events_json|safe }},
+      nowIndicator: true,
+      selectable: true,
+      selectMirror: true,
+      stickyHeaderDates: true,
+      dayMaxEvents: true,
+      slotDuration: '00:30:00',
+      slotLabelFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+      slotMinTime: '06:00:00',
+      slotMaxTime: '22:00:00',
+      eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: true },
+      events: {
+        url: '/dashboard/api/events/',
+        method: 'GET',
+        failure: function() { console.error('Failed to load events'); }
+      },
+      eventsSet: function(events) {
+        eventsMap.clear();
+        events.forEach(function(ev) {
+          eventsMap.set(parseInt(ev.id, 10), {
+            id: parseInt(ev.id, 10),
+            title: ev.title,
+            start: ev.start,
+            end: ev.end,
+            extendedProps: ev.extendedProps || {}
+          });
+        });
+      },
+      // Treat event datetimes from the server as UTC; let FullCalendar operate
+      // in the browser's local timezone so UI and modal displays match the user.
+      timeZone: 'local',
+
       eventClick: function(info) {
         info.jsEvent.preventDefault();
         currentEventId = info.event.id;
         var event = info.event;
-        
-        // Format dates
+        // Format dates using the browser's locale and timezone
         var startDate = new Date(event.start);
-        var endDate = new Date(event.end);
-        var startStr = startDate.toLocaleString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
-        var endStr = endDate.toLocaleString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
+        var endDate = event.end ? new Date(event.end) : new Date(event.start);
+        var startStr = formatEventDateTime(startDate, userLocale);
+        var endStr = formatEventDateTime(endDate, userLocale);
         
         // Build modal content
         var content = `
@@ -204,6 +299,18 @@
       dateClick: function(info) {
         window.location.href = '{% url "dashboard:create_event" %}?date=' + info.dateStr;
       },
+      select: function(selectionInfo) {
+        var startISO = selectionInfo.startStr;
+        var endISO = selectionInfo.endStr;
+        window.location.href = '{% url "dashboard:create_event" %}?start=' + encodeURIComponent(startISO) + '&end=' + encodeURIComponent(endISO);
+      },
+      editable: true,
+      eventDrop: function(dropInfo) {
+        updateEventTimes(dropInfo.event, dropInfo.revert);
+      },
+      eventResize: function(resizeInfo) {
+        updateEventTimes(resizeInfo.event, resizeInfo.revert);
+      },
       height: 'auto',
       loading: function(isLoading) {
         if (isLoading) {
@@ -229,6 +336,67 @@
     var modal = document.getElementById('eventModal');
     var closeModal = document.getElementById('closeModal');
     var cancelModalBtn = document.getElementById('cancelModalBtn');
+    var modalContent = document.getElementById('eventModalContent');
+    var editEventBtn = document.getElementById('editEventBtn');
+    var deleteEventBtn = document.getElementById('deleteEventBtn');
+    var eventsListEl = document.getElementById('eventsList');
+    var currentEventId = null;
+    
+    function getCookie(name) {
+      var cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+          var cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    
+    function fetchEventAndPut(id, payload) {
+      return fetch('/dashboard/api/events/' + id + '/', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(payload)
+      }).then(function(resp) { return resp.json(); });
+    }
+    
+    window.updateEventTimes = function(eventObj, revertFn) {
+      var id = eventObj.id;
+      // Fetch existing details to provide required fields for PUT
+      fetch('/dashboard/api/events/' + id + '/')
+        .then(function(r) { return r.json(); })
+        .then(function(existing) {
+          var payload = {
+            title: existing.title || eventObj.title || 'Untitled Event',
+            description: existing.description || (eventObj.extendedProps && eventObj.extendedProps.description) || '',
+            location: existing.location || (eventObj.extendedProps && eventObj.extendedProps.location) || '',
+            // send UTC ISO timestamps; server will parse them as UTC
+            start_time: eventObj.start ? eventObj.start.toISOString() : new Date().toISOString(),
+            end_time: (eventObj.end ? eventObj.end.toISOString() : (eventObj.start ? eventObj.start.toISOString() : new Date().toISOString()))
+          };
+          return fetchEventAndPut(id, payload);
+        })
+        .then(function(resp) {
+          if (!resp || resp.success !== true) {
+            if (typeof revertFn === 'function') revertFn();
+            console.error('Failed to update event', resp);
+            alert('Could not update the event time.');
+          }
+        })
+        .catch(function(err) {
+          if (typeof revertFn === 'function') revertFn();
+          console.error(err);
+          alert('Error updating event.');
+        });
+    };
     
     function closeModalFunc() {
       if (modal) modal.classList.add('hidden');
@@ -247,23 +415,19 @@
     }
     
     // Add click handlers to events list - optimized with event delegation
-    var eventsListData = {{ events_list_data|safe }};
-    var eventsMap = new Map();
-    eventsListData.forEach(function(event) {
-      eventsMap.set(event.id, event);
-    });
-    
     // Use event delegation for better performance
-    document.getElementById('eventsList').addEventListener('click', function(e) {
-      var eventItem = e.target.closest('.event-item');
-      if (eventItem && !e.target.closest('a')) {
-        var eventId = parseInt(eventItem.getAttribute('data-event-id'));
-        var eventData = eventsMap.get(eventId);
-        if (eventData) {
-          showEventDetails(eventData.id, eventData.title, eventData.start, eventData.end, eventData.extendedProps.location, eventData.extendedProps.description);
+    if (eventsListEl) {
+      eventsListEl.addEventListener('click', function(e) {
+        var eventItem = e.target.closest('.event-item');
+        if (eventItem && !e.target.closest('a')) {
+          var eventId = parseInt(eventItem.getAttribute('data-event-id'));
+          var eventData = eventsMap.get(eventId);
+          if (eventData) {
+            showEventDetails(eventData.id, eventData.title, eventData.start, eventData.end, eventData.extendedProps.location, eventData.extendedProps.description);
+          }
         }
-      }
-    });
+      });
+    }
     
     // Function to show event details - optimized
     window.showEventDetails = function(eventId, title, startTime, endTime, location, description) {
@@ -271,11 +435,9 @@
       
       // Format dates - optimized
       var startDate = new Date(startTime);
-      var endDate = new Date(endTime);
-      var dateOptions = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-      var timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-      var startStr = startDate.toLocaleString('en-US', Object.assign({ weekday: 'long' }, dateOptions));
-      var endStr = endDate.toLocaleString('en-US', timeOptions);
+      var endDate = endTime ? new Date(endTime) : new Date(startTime);
+      var startStr = formatEventDateTime(startDate, defaultLocale);
+      var endStr = formatEventDateTime(endDate, defaultLocale);
       
       // Build modal content
       var content = `
