@@ -10,6 +10,7 @@ urlpatterns = [
     path("notifications/", views.notifications_view, name="notifications"),
     path("settings/", views.settings_view, name="settings"),
     path("profile/", views.profile_view, name="profile"),
+    path("settings/security-questions/", views.set_security_questions_view, name="set_security_questions"),
     
     # Event management
     path("events/create/", views.create_event_view, name="create_event"),
@@ -21,4 +22,3 @@ urlpatterns = [
     path("api/events/<int:event_id>/", views.event_detail_api, name="event_detail_api"),
     path("api/profile/", views.profile_api, name="profile_api"),
 ]
-

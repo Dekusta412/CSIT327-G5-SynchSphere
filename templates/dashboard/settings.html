@@ -1,77 +1,78 @@
 {% extends "dashboard/base_dashboard.html" %}
+{% load form_tags %}
 {% block page_title %}Settings{% endblock %}
 
 {% block dashboard_content %}
 <div class="space-y-6 max-w-2xl">
   <div>
     <h2 class="text-2xl font-bold text-white">Settings</h2>
-    <p class="text-gray-400 mt-1">Security and notifications</p>
+    <p class="text-gray-400 mt-1">Manage your account security and notification preferences.</p>
   </div>
 
-  <!-- Password Manager -->
-  <div class="bg-gray-900 rounded-3xl border border-gray-800 p-8 shadow-lg max-w-xl settings-password">
-    <div class="text-center mb-6 space-y-2">
-      <h3 class="text-white text-xl font-semibold">Create new password</h3>
-      <p class="text-gray-400 text-sm">Enter your current password and choose a new one.</p>
+  <!-- Security Section -->
+  <div class="bg-gray-900 rounded-3xl border border-gray-800 p-8 shadow-lg max-w-xl">
+    <h3 class="text-white text-xl font-semibold mb-6">Security</h3>
+    
+    <!-- Security Questions -->
+    <div class="mb-8">
+      <h4 class="text-white font-semibold">Security Questions</h4>
+      <p class="text-gray-400 text-sm mb-4">Set up security questions to recover your account.</p>
+      <a href="{% url 'dashboard:set_security_questions' %}" class="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-2xl transition">Set Security Questions</a>
     </div>
-    <form method="post" class="space-y-5">
-      {% csrf_token %}
-      <input type="hidden" name="change_password" value="1">
-      {% if messages %}
-        {% for message in messages %}
-          <div class="p-3 rounded-lg {% if message.tags == 'error' %}bg-red-900/20 border border-red-800 text-red-200{% else %}bg-green-900/20 border border-green-800 text-green-200{% endif %}">
-            {{ message }}
+
+    <hr class="border-gray-700 my-8">
+
+    <!-- Password Manager -->
+    <div>
+      <h4 class="text-white font-semibold">Change Password</h4>
+      <p class="text-gray-400 text-sm mb-4">Enter your current password and choose a new one.</p>
+      <form method="post" class="space-y-5">
+        {% csrf_token %}
+        <input type="hidden" name="change_password" value="1">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="p-3 rounded-lg {% if message.tags == 'error' %}bg-red-900/20 border border-red-800 text-red-200{% else %}bg-green-900/20 border border-green-800 text-green-200{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+        
+        {% if password_form.non_field_errors %}
+          <div class="p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-200 text-sm">
+            {{ password_form.non_field_errors }}
           </div>
-        {% endfor %}
-      {% endif %}
-      
-      {% if password_form.non_field_errors %}
-        <div class="p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-200 text-sm">
-          {{ password_form.non_field_errors }}
-        </div>
-      {% endif %}
-      
-      <div class="space-y-1">
-        <label class="text-gray-200 text-sm flex justify-between">
-          <span>Current password</span>
-          <a href="{% url 'password_reset' %}" class="text-blue-400 text-xs hover:text-blue-300">Forgot?</a>
-        </label>
-        <div class="flex items-center bg-gray-800 rounded-xl border {% if password_form.old_password.errors %}border-red-600{% else %}border-gray-700{% endif %} px-4 focus-within:ring-2 focus-within:ring-blue-500">
-          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3m4 0a7 7 0 11-14 0 7 7 0 0114 0zM5.458 12C6.732 15.943 9.988 19 12 19s5.268-3.057 6.542-7"/></svg>
-          {{ password_form.old_password }}
-          <button type="button" class="toggle-password ml-auto text-gray-400 text-xs">Show</button>
-        </div>
-        {% if password_form.old_password.errors %}
-          <div class="text-red-400 text-xs mt-1">{{ password_form.old_password.errors }}</div>
         {% endif %}
-      </div>
-      <div class="space-y-1">
-        <label class="text-gray-200 text-sm">New password</label>
-        <div class="flex items-center bg-gray-800 rounded-xl border {% if password_form.new_password1.errors %}border-red-600{% else %}border-gray-700{% endif %} px-4 focus-within:ring-2 focus-within:ring-blue-500">
-          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3m4 0a7 7 0 11-14 0 7 7 0 0114 0zM5.458 12C6.732 15.943 9.988 19 12 19s5.268-3.057 6.542-7"/></svg>
-          {{ password_form.new_password1 }}
-          <button type="button" class="toggle-password ml-auto text-gray-400 text-xs">Show</button>
+        
+        <div class="space-y-1">
+          <label class="text-gray-200 text-sm flex justify-between">
+            <span>Current password</span>
+            <a href="{% url 'accounts:request_password_reset' %}" class="text-blue-400 text-xs hover:text-blue-300">Forgot?</a>
+          </label>
+          {{ password_form.old_password|as_widget:"{'class': 'w-full px-4 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'}" }}
+          {% if password_form.old_password.errors %}
+            <div class="text-red-400 text-xs mt-1">{{ password_form.old_password.errors }}</div>
+          {% endif %}
         </div>
-        {% if password_form.new_password1.errors %}
-          <div class="text-red-400 text-xs mt-1">{{ password_form.new_password1.errors }}</div>
-        {% endif %}
-        {% if password_form.new_password1.help_text %}
-          <div class="text-gray-400 text-xs mt-1">{{ password_form.new_password1.help_text }}</div>
-        {% endif %}
-      </div>
-      <div class="space-y-1">
-        <label class="text-gray-200 text-sm">Confirm new password</label>
-        <div class="flex items-center bg-gray-800 rounded-xl border {% if password_form.new_password2.errors %}border-red-600{% else %}border-gray-700{% endif %} px-4 focus-within:ring-2 focus-within:ring-blue-500">
-          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3m4 0a7 7 0 11-14 0 7 7 0 0114 0zM5.458 12C6.732 15.943 9.988 19 12 19s5.268-3.057 6.542-7"/></svg>
-          {{ password_form.new_password2 }}
-          <button type="button" class="toggle-password ml-auto text-gray-400 text-xs">Show</button>
+        <div class="space-y-1">
+          <label class="text-gray-200 text-sm">New password</label>
+          {{ password_form.new_password1|as_widget:"{'class': 'w-full px-4 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'}" }}
+          {% if password_form.new_password1.errors %}
+            <div class="text-red-400 text-xs mt-1">{{ password_form.new_password1.errors }}</div>
+            {% if password_form.new_password1.help_text %}
+              <div class="text-gray-400 text-xs mt-1">{{ password_form.new_password1.help_text|safe }}</div>
+            {% endif %}
+          {% endif %}
         </div>
-        {% if password_form.new_password2.errors %}
-          <div class="text-red-400 text-xs mt-1">{{ password_form.new_password2.errors }}</div>
-        {% endif %}
-      </div>
-      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-2xl transition">Update password</button>
-    </form>
+        <div class="space-y-1">
+          <label class="text-gray-200 text-sm">Confirm new password</label>
+          {{ password_form.new_password2|as_widget:"{'class': 'w-full px-4 py-2.5 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'}" }}
+          {% if password_form.new_password2.errors %}
+            <div class="text-red-400 text-xs mt-1">{{ password_form.new_password2.errors }}</div>
+          {% endif %}
+        </div>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-2xl transition">Update password</button>
+      </form>
+    </div>
   </div>
 
   <!-- Danger Zone -->
@@ -89,41 +90,4 @@
     </div>
   </div>
 </div>
-<style>
-  .settings-password input {
-    background: transparent !important;
-    border: none;
-    color: #fff;
-    width: 100%;
-    padding: 0.5rem 0.25rem;
-  }
-  .settings-password input::placeholder {
-    color: #9ca3af;
-  }
-  .settings-password input:focus {
-    outline: none;
-  }
-</style>
-<script>
-  // Password toggle functionality
-  document.addEventListener('DOMContentLoaded', function() {
-    const toggleButtons = document.querySelectorAll('.toggle-password');
-    toggleButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const input = this.parentElement.querySelector('input[type="password"], input[type="text"]');
-        if (input) {
-          if (input.type === 'password') {
-            input.type = 'text';
-            this.textContent = 'Hide';
-          } else {
-            input.type = 'password';
-            this.textContent = 'Show';
-          }
-        }
-      });
-    });
-  });
-</script>
 {% endblock %}
-
-

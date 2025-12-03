@@ -8,6 +8,8 @@ from django.utils import timezone
 from django.db.models import Q
 from .models import Event, Reminder, Notification, UserProfile
 from .forms import EventForm, ReminderForm, UserProfileForm, UserUpdateForm, CustomPasswordChangeForm
+from accounts.forms import SetSecurityQuestionsForm
+from accounts.models import UserSecurityAnswer
 from .utils import (
     get_user_profile,
     get_unread_count,
@@ -281,6 +283,43 @@ def settings_view(request):
     }
     
     return render(request, 'dashboard/settings.html', context)
+
+
+@login_required
+def set_security_questions_view(request):
+    user = request.user
+    if request.method == 'POST':
+        form = SetSecurityQuestionsForm(request.POST)
+        if form.is_valid():
+            # Delete old answers
+            UserSecurityAnswer.objects.filter(user=user).delete()
+            
+            # Create new answers
+            q1 = form.cleaned_data['question_1']
+            a1 = form.cleaned_data['answer_1']
+            q2 = form.cleaned_data['question_2']
+            a2 = form.cleaned_data['answer_2']
+            q3 = form.cleaned_data['question_3']
+            a3 = form.cleaned_data['answer_3']
+
+            ans1 = UserSecurityAnswer(user=user, question=q1)
+            ans1.set_answer(a1)
+            ans1.save()
+
+            ans2 = UserSecurityAnswer(user=user, question=q2)
+            ans2.set_answer(a2)
+            ans2.save()
+
+            ans3 = UserSecurityAnswer(user=user, question=q3)
+            ans3.set_answer(a3)
+            ans3.save()
+            
+            messages.success(request, 'Your security questions have been set.')
+            return redirect('dashboard:settings')
+    else:
+        form = SetSecurityQuestionsForm()
+        
+    return render(request, 'dashboard/set_security_questions.html', {'form': form})
 
 
 @login_required
@@ -634,4 +673,3 @@ def profile_api(request):
             return JsonResponse({'success': True, 'message': 'Profile updated successfully'})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
-

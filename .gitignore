@@ -13,6 +13,8 @@ ENV/
 # Django
 *.sqlite3
 db.sqlite3
+media/
+staticfiles/
 
 # Node / Tailwind (optional)
 node_modules/
