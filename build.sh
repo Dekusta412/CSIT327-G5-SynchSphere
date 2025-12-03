@@ -8,7 +8,7 @@ pip install --no-cache-dir gunicorn
 # Ensure whitenoise is installed so Django can import it at runtime
 pip install --no-cache-dir whitenoise
 echo "==> Running database migrations"
-python manage.py migrate --noinput
+python manage.py migrate accounts --noinput
 echo "==> Populating security questions"
 python manage.py populate_security_questions
 echo "==> Collecting static files"
