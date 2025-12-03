@@ -10,6 +10,8 @@ pip install --no-cache-dir whitenoise
 echo "==> Running database migrations"
 python manage.py makemigrations
 python manage.py migrate --noinput
+echo "==> Populating security questions"
+python manage.py populate_security_questions
 echo "==> Collecting static files"
 python manage.py collectstatic --noinput
 echo "==> Creating media directories"
