@@ -138,9 +138,21 @@ USE_TZ = True
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Ensure media directory exists
-MEDIA_ROOT.mkdir(exist_ok=True)
-(MEDIA_ROOT / 'avatars').mkdir(exist_ok=True)
+# Ensure media directory exists (important for Render deployment)
+# Note: On Render, the filesystem is ephemeral - uploaded files will be lost on restart.
+# For production, consider using cloud storage (AWS S3, Cloudinary, etc.)
+try:
+    MEDIA_ROOT.mkdir(exist_ok=True)
+    (MEDIA_ROOT / 'avatars').mkdir(exist_ok=True)
+    # Set permissions (755 = rwxr-xr-x)
+    import os
+    os.chmod(MEDIA_ROOT, 0o755)
+    os.chmod(MEDIA_ROOT / 'avatars', 0o755)
+except (OSError, PermissionError) as e:
+    # Log error but don't crash - directory might already exist or be created by build script
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Could not create media directories: {e}")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -166,8 +178,9 @@ else:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
 EMAIL_HOST_USER = os.getenv("EMAIL_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
