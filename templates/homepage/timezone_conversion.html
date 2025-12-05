@@ -1,4 +1,4 @@
-{% extends "dashboard/base_dashboard.html" %}
+{% extends "homepage/base_dashboard.html" %}
 {% block page_title %}Timezone Conversion{% endblock %}
 
 {% block dashboard_content %}
@@ -40,7 +40,7 @@
     </div>
     <div class="p-6 space-y-4" id="eventsContainer">
       <p id="noEventsMessage" class="text-gray-400 text-center py-12 {% if has_events %}hidden{% endif %}">
-        No events to convert yet. <a href="{% url 'dashboard:calendar' %}" class="text-blue-400 hover:underline">Create an event</a>
+        No events to convert yet. <a href="{% url 'homepage:calendar' %}" class="text-blue-400 hover:underline">Create an event</a>
       </p>
     </div>
   </div>
@@ -240,4 +240,5 @@
   })();
 </script>
 {% endblock %}
+
 

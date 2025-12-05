@@ -87,6 +87,8 @@ class Event(models.Model):
     end_time = models.DateTimeField(help_text="Stored in UTC")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='events')
     location = models.CharField(max_length=200, blank=True)
+    invite_participants = models.TextField(blank=True, help_text="Comma-separated email addresses of participants")
+    invitation_link = models.CharField(max_length=500, blank=True, help_text="Generated invitation link for the event")
     external_calendar_id = models.CharField(max_length=200, blank=True, null=True, help_text="ID from external calendar sync")
     external_calendar_type = models.CharField(max_length=50, blank=True, choices=[
         ('google', 'Google Calendar'),

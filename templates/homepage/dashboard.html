@@ -1,4 +1,4 @@
-{% extends "dashboard/base_dashboard.html" %}
+{% extends "homepage/base_dashboard.html" %}
 {% block page_title %}Dashboard{% endblock %}
 
 {% block dashboard_content %}
@@ -60,11 +60,11 @@
     <div class="bg-gray-800 rounded-lg border border-gray-700">
       <div class="p-6 border-b border-gray-700 flex items-center justify-between">
         <h3 class="text-lg font-semibold text-white">Upcoming Events</h3>
-        <a href="{% url 'dashboard:calendar' %}" class="text-blue-400 hover:text-blue-300 text-sm">View All</a>
+        <a href="{% url 'homepage:calendar' %}" class="text-blue-400 hover:text-blue-300 text-sm">View All</a>
       </div>
       <div class="p-6">
         <div class="space-y-4" id="upcomingEventsContainer">
-          <p id="noUpcomingEventsMessage" class="text-gray-400 text-center py-4 {% if has_upcoming_events %}hidden{% endif %}">No upcoming events. <a href="{% url 'dashboard:calendar' %}" class="text-blue-400 hover:underline">Create one</a></p>
+          <p id="noUpcomingEventsMessage" class="text-gray-400 text-center py-4 {% if has_upcoming_events %}hidden{% endif %}">No upcoming events. <a href="{% url 'homepage:calendar' %}" class="text-blue-400 hover:underline">Create one</a></p>
         </div>
       </div>
     </div>
@@ -98,7 +98,7 @@
   <div class="bg-gray-800 rounded-lg border border-gray-700">
     <div class="p-6 border-b border-gray-700 flex items-center justify-between">
       <h3 class="text-lg font-semibold text-white">Recent Notifications</h3>
-      <a href="{% url 'dashboard:notifications' %}" class="text-blue-400 hover:text-blue-300 text-sm">View All</a>
+      <a href="{% url 'homepage:notifications' %}" class="text-blue-400 hover:text-blue-300 text-sm">View All</a>
     </div>
     <div class="p-6">
       {% if notifications %}
@@ -212,5 +212,6 @@
   })();
 </script>
 {% endblock %}
+
 
 

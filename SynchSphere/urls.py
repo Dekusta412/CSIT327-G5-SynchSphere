@@ -8,7 +8,7 @@ from . import realtime
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls", namespace="accounts")),
-    path("dashboard/", include("dashboard.urls", namespace="dashboard")),
+    path("homepage/", include("homepage.urls", namespace="homepage")),
     path("", TemplateView.as_view(template_name="home.html"), name="home"),
     path('events/', realtime.event_stream, name='events'),
 ]

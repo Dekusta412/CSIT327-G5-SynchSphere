@@ -46,7 +46,7 @@ class EventForm(forms.ModelForm):
 
     class Meta:
         model = Event
-        fields = ['title', 'description', 'start_time', 'end_time', 'location']
+        fields = ['title', 'description', 'invite_participants', 'start_time', 'end_time', 'location']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500',
@@ -56,6 +56,11 @@ class EventForm(forms.ModelForm):
                 'class': 'w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500',
                 'rows': 4,
                 'placeholder': 'Event Description'
+            }),
+            'invite_participants': forms.Textarea(attrs={
+                'class': 'w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'rows': 3,
+                'placeholder': 'Enter participant emails (comma-separated)\ne.g., user1@example.com, user2@example.com'
             }),
             'location': forms.TextInput(attrs={
                 'class': 'w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500',

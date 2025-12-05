@@ -60,7 +60,12 @@ EMAIL_USER=test@example.com
 EMAIL_PASS=
 ```
 
-### 5️⃣ Run the development server
+### 5️⃣ Apply database migrations
+``` bash
+python manage.py migrate
+```
+
+### 6️⃣ Run the development server
 ``` bash
 python manage.py runserver
 ```

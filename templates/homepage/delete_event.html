@@ -1,4 +1,4 @@
-{% extends "dashboard/base_dashboard.html" %}
+{% extends "homepage/base_dashboard.html" %}
 {% block page_title %}Delete Event{% endblock %}
 
 {% block dashboard_content %}
@@ -29,10 +29,11 @@
         <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
           Yes, Delete Event
         </button>
-        <a href="{% url 'dashboard:calendar' %}" class="text-gray-400 hover:text-white">Cancel</a>
+        <a href="{% url 'homepage:calendar' %}" class="text-gray-400 hover:text-white">Cancel</a>
       </div>
     </form>
   </div>
 </div>
 {% endblock %}
+
 

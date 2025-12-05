@@ -1,4 +1,4 @@
-{% extends "dashboard/base_dashboard.html" %}
+{% extends "homepage/base_dashboard.html" %}
 {% load form_tags %}
 {% block page_title %}Settings{% endblock %}
 
@@ -17,7 +17,7 @@
     <div class="mb-8">
       <h4 class="text-white font-semibold">Security Questions</h4>
       <p class="text-gray-400 text-sm mb-4">Set up security questions to recover your account.</p>
-      <a href="{% url 'dashboard:set_security_questions' %}" class="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-2xl transition">Set Security Questions</a>
+      <a href="{% url 'homepage:set_security_questions' %}" class="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-2xl transition">Set Security Questions</a>
     </div>
 
     <hr class="border-gray-700 my-8">
@@ -91,3 +91,4 @@
   </div>
 </div>
 {% endblock %}
+
