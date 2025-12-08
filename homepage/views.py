@@ -29,22 +29,24 @@ def dashboard_view(request):
     user = request.user
     profile = get_user_profile(user)
     
-    # Get upcoming reminders (next 7 days) - optimized query with select_related
+    # Get events happening within the next 24 hours (today's events)
     now = timezone.now()
-    upcoming_reminders = Reminder.objects.filter(
-        user=user,
-        reminder_time__gte=now,
-        reminder_time__lte=now + timedelta(days=7),
-        is_sent=False
-    ).order_by('reminder_time')[:10].only('id', 'title', 'reminder_time', 'is_sent')
+    next_24_hours = now + timedelta(hours=24)
     
-    # Get recent notifications (unread first) - optimized query
+    # Get events within next 24 hours for today's events section
+    upcoming_reminders = Event.objects.filter(
+        user=user,
+        start_time__gte=now,
+        start_time__lte=next_24_hours
+    ).order_by('start_time')[:10].only('id', 'title', 'start_time', 'location')
+    
+    # Get ALL notifications (unread first) for upcoming events section
     notifications = Notification.objects.filter(user=user).order_by('-is_read', '-created_at')[:10].only(
         'id', 'title', 'message', 'is_read', 'created_at', 'notification_type'
     )
     unread_count = get_unread_count(user)
     
-    # Get upcoming events (next 7 days)
+    # Get upcoming events (next 7 days) for the events widget
     upcoming_events_qs = Event.objects.filter(
         user=user,
         start_time__gte=now,
@@ -755,4 +757,58 @@ def meeting_invitation_view(request, token, event_id=None):
     }
     
     return render(request, 'homepage/meeting_invitation.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def join_event_view(request):
+    """Handle joining an event via invitation link"""
+    try:
+        data = json.loads(request.body)
+        event_token = data.get('event_token')
+        
+        if not event_token:
+            return JsonResponse({'success': False, 'error': 'Event token is required'}, status=400)
+        
+        # Find the event by invitation token
+        event = Event.objects.filter(invitation_link__contains=event_token).first()
+        
+        if not event:
+            return JsonResponse({'success': False, 'error': 'Event not found or link is invalid'}, status=404)
+        
+        # Check if the event has already passed
+        if event.end_time < timezone.now():
+            return JsonResponse({'success': False, 'error': 'This event has already ended'}, status=400)
+        
+        # Create a copy of the event for the user's calendar
+        new_event = Event.objects.create(
+            title=f"{event.title} (Joined)",
+            description=event.description,
+            start_time=event.start_time,
+            end_time=event.end_time,
+            location=event.location,
+            user=request.user,
+            external_calendar_id=str(event.id),  # Reference to original event
+            external_calendar_type='joined'
+        )
+        
+        # Create a notification
+        Notification.objects.create(
+            user=request.user,
+            title='Event Added to Calendar',
+            message=f'You have successfully joined "{event.title}"',
+            notification_type='event',
+            event=new_event
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Event has been added to your calendar',
+            'event_id': new_event.id
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid request data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

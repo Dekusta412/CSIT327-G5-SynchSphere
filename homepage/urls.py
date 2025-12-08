@@ -26,4 +26,7 @@ urlpatterns = [
     path("api/events/<int:event_id>/", views.event_detail_api, name="event_detail_api"),
     path("api/profile/", views.profile_api, name="profile_api"),
     path("api/search-users/", views.search_users_api, name="search_users_api"),
+    
+    # Join event
+    path("join-event/", views.join_event_view, name="join_event"),
 ]
