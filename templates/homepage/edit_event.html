@@ -139,6 +139,7 @@
     if (existingParticipants) {
       const emails = existingParticipants.split(',').map(e => e.trim()).filter(e => e);
       emails.forEach(email => {
+        if (!email) return;
         selectedParticipants.push(email);
         const chip = document.createElement('span');
         chip.className = 'inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-full text-sm';
@@ -146,11 +147,12 @@
         
         // Extract username from email or use email
         const username = email.split('@')[0];
+        const displayName = username || email;
         
         chip.innerHTML = `
           <div class="flex items-center gap-2">
             <div class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">
-              ${username.charAt(0).toUpperCase()}
+              ${displayName.charAt(0).toUpperCase()}
             </div>
             <span>${email}</span>
           </div>
@@ -281,7 +283,7 @@
     // Generate a unique meeting token
     const meetingToken = generateUniqueId();
     const baseUrl = window.location.origin;
-    const invitationLink = `${baseUrl}/homepage/meeting/${meetingToken}/${eventId}`;
+    const invitationLink = `${baseUrl}/homepage/meeting/${meetingToken}`;
     
     linkInput.value = invitationLink;
     linkInput.classList.remove('text-gray-400');

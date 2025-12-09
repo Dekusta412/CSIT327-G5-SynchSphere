@@ -59,10 +59,33 @@
         <a href="{% url 'homepage:notifications' %}" class="text-blue-400 hover:text-blue-300 text-sm">View All</a>
       </div>
       <div class="p-6">
-        {% if notifications %}
         <div class="space-y-4">
+          <!-- Event Notifications (from upcoming events) -->
+          {% for event in upcoming_event_notifications %}
+          <div class="flex items-start space-x-3 p-3 rounded-lg bg-blue-900/20 border border-blue-700/50 hover:bg-blue-900/30 transition-colors">
+            <div class="flex-shrink-0 mt-1">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h4 class="text-white font-medium text-sm font-bold">Upcoming Event: {{ event.title }}</h4>
+              <p class="text-gray-300 text-xs mt-1">
+                <svg class="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                {{ event.start_time|date:"M d, Y g:i A" }}
+              </p>
+              {% if event.location %}
+              <p class="text-gray-400 text-xs mt-1">📍 {{ event.location }}</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+
+          <!-- Regular Notifications -->
           {% for notification in notifications %}
-          <div class="flex items-start space-x-3 p-3 rounded-lg {% if not notification.is_read %}bg-gray-700/50{% endif %} hover:bg-gray-700 transition-colors">
+          <div class="flex items-start space-x-3 p-3 rounded-lg {% if not notification.is_read %}bg-gray-700/50{% endif %} {% if notification.notification_type == 'event_invitation' %}border border-purple-700/50{% endif %} hover:bg-gray-700 transition-colors">
             <div class="flex-shrink-0 mt-1">
               {% if notification.notification_type == 'reminder' %}
               <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,6 +94,10 @@
               {% elif notification.notification_type == 'event' %}
               <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              {% elif notification.notification_type == 'event_invitation' %}
+              <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
               </svg>
               {% else %}
               <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +108,34 @@
             <div class="flex-1 min-w-0">
               <h4 class="text-white font-medium text-sm {% if not notification.is_read %}font-bold{% endif %}">{{ notification.title }}</h4>
               <p class="text-gray-400 text-xs mt-1">{{ notification.message|truncatewords:15 }}</p>
+              {% if notification.event %}
+              <p class="text-gray-500 text-xs mt-1">
+                <svg class="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                {{ notification.event.start_time|date:"M d, g:i A" }}
+              </p>
+              {% endif %}
               <p class="text-gray-500 text-xs mt-1">{{ notification.created_at|timesince }} ago</p>
+              
+              <!-- Accept/Reject buttons for event invitations -->
+              {% if notification.notification_type == 'event_invitation' and notification.invitation_status == 'pending' %}
+              <div class="flex gap-2 mt-2">
+                <button onclick="viewEventDetails({{ notification.event.id }}, {{ notification.id }})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors">
+                  View
+                </button>
+                <button onclick="handleInvitation({{ notification.id }}, 'accept')" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors">
+                  Accept
+                </button>
+                <button onclick="handleInvitation({{ notification.id }}, 'reject')" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors">
+                  Reject
+                </button>
+              </div>
+              {% elif notification.notification_type == 'event_invitation' and notification.invitation_status == 'accepted' %}
+              <span class="inline-block mt-2 px-2 py-1 bg-green-900/50 text-green-300 text-xs rounded">Accepted</span>
+              {% elif notification.notification_type == 'event_invitation' and notification.invitation_status == 'rejected' %}
+              <span class="inline-block mt-2 px-2 py-1 bg-red-900/50 text-red-300 text-xs rounded">Rejected</span>
+              {% endif %}
             </div>
             {% if not notification.is_read %}
             <div class="flex-shrink-0">
@@ -91,8 +145,9 @@
           </div>
           {% endfor %}
         </div>
-        {% else %}
-        <p class="text-gray-400 text-center py-4">No notifications.</p>
+        
+        {% if not notifications and not upcoming_event_notifications %}
+        <p class="text-gray-400 text-center py-4">No notifications or upcoming events.</p>
         {% endif %}
       </div>
     </div>
@@ -213,6 +268,31 @@
     document.addEventListener('DOMContentLoaded', renderEvents);
   })();
 
+  // Handle Invitation Accept/Reject
+  function handleInvitation(notificationId, action) {
+    const url = `/homepage/invitation/${notificationId}/${action}/`;
+    
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message);
+        location.reload();
+      } else {
+        alert(data.error || `Failed to ${action} invitation`);
+      }
+    })
+    .catch(error => {
+      alert('An error occurred. Please try again.');
+    });
+  }
+
   // Join Event Modal Functions
   function openJoinEventModal() {
     document.getElementById('joinEventModal').classList.remove('hidden');
@@ -226,26 +306,34 @@
 
   function submitJoinEvent(event) {
     event.preventDefault();
-    const meetingLink = document.getElementById('meetingLink').value;
+    const meetingLink = document.getElementById('meetingLink').value.trim();
     const errorDiv = document.getElementById('joinEventError');
     
-    if (!meetingLink.trim()) {
+    if (!meetingLink) {
       errorDiv.textContent = 'Please enter a meeting link';
       errorDiv.classList.remove('hidden');
       return;
     }
 
-    // Extract event ID from the meeting link
-    const urlPattern = /\/homepage\/meeting\/invitation\/([a-f0-9-]+)\//;
+    // Extract event token from the meeting link (supports full URL or just token)
+    let eventToken = '';
+    
+    // Try to match full URL pattern: /homepage/meeting/{token}
+    const urlPattern = /\/homepage\/meeting\/([a-f0-9]+)/i;
     const match = meetingLink.match(urlPattern);
     
-    if (!match) {
-      errorDiv.textContent = 'Invalid meeting link format';
-      errorDiv.classList.remove('hidden');
-      return;
+    if (match) {
+      eventToken = match[1];
+    } else {
+      // Assume it's just the token itself (alphanumeric string)
+      if (/^[a-f0-9]+$/i.test(meetingLink)) {
+        eventToken = meetingLink;
+      } else {
+        errorDiv.textContent = 'Invalid meeting link format. Please paste the full invitation link.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
     }
-
-    const eventToken = match[1];
     
     // Submit to backend
     fetch('/homepage/join-event/', {
@@ -324,6 +412,113 @@
     </form>
   </div>
 </div>
+
+<!-- Event Details Modal -->
+<div id="eventDetailsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+  <div class="bg-gray-800 rounded-lg border border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="p-6">
+      <div class="flex justify-between items-start mb-4">
+        <h3 class="text-2xl font-bold text-white" id="modalEventTitle"></h3>
+        <button onclick="closeEventDetailsModal()" class="text-gray-400 hover:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <h4 class="text-gray-400 text-sm font-medium mb-1">Event Creator</h4>
+          <p class="text-white" id="modalEventCreator"></p>
+        </div>
+        
+        <div>
+          <h4 class="text-gray-400 text-sm font-medium mb-1">Description</h4>
+          <p class="text-white" id="modalEventDescription"></p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 class="text-gray-400 text-sm font-medium mb-1">Start Time</h4>
+            <p class="text-white" id="modalEventStart"></p>
+          </div>
+          <div>
+            <h4 class="text-gray-400 text-sm font-medium mb-1">End Time</h4>
+            <p class="text-white" id="modalEventEnd"></p>
+          </div>
+        </div>
+        
+        <div id="modalEventLocationContainer" class="hidden">
+          <h4 class="text-gray-400 text-sm font-medium mb-1">Location</h4>
+          <p class="text-white" id="modalEventLocation"></p>
+        </div>
+      </div>
+      
+      <div class="flex gap-3 mt-6 pt-4 border-t border-gray-700">
+        <button onclick="acceptFromModal()" class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition-colors">
+          Accept Invitation
+        </button>
+        <button onclick="rejectFromModal()" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded transition-colors">
+          Reject Invitation
+        </button>
+        <button onclick="closeEventDetailsModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentNotificationId = null;
+
+  // View Event Details
+  function viewEventDetails(eventId, notificationId) {
+    currentNotificationId = notificationId;
+    
+    fetch(`/homepage/api/events/${eventId}/`)
+      .then(response => response.json())
+      .then(event => {
+        document.getElementById('modalEventTitle').textContent = event.title;
+        document.getElementById('modalEventCreator').textContent = event.creator_name;
+        document.getElementById('modalEventDescription').textContent = event.description || 'No description provided';
+        document.getElementById('modalEventStart').textContent = new Date(event.start).toLocaleString();
+        document.getElementById('modalEventEnd').textContent = new Date(event.end).toLocaleString();
+        
+        if (event.location) {
+          document.getElementById('modalEventLocation').textContent = event.location;
+          document.getElementById('modalEventLocationContainer').classList.remove('hidden');
+        } else {
+          document.getElementById('modalEventLocationContainer').classList.add('hidden');
+        }
+        
+        document.getElementById('eventDetailsModal').classList.remove('hidden');
+      })
+      .catch(error => {
+        console.error('Error loading event details:', error);
+        alert('Failed to load event details');
+      });
+  }
+
+  function closeEventDetailsModal() {
+    document.getElementById('eventDetailsModal').classList.add('hidden');
+    currentNotificationId = null;
+  }
+
+  function acceptFromModal() {
+    if (currentNotificationId) {
+      handleInvitation(currentNotificationId, 'accept');
+      closeEventDetailsModal();
+    }
+  }
+
+  function rejectFromModal() {
+    if (currentNotificationId) {
+      handleInvitation(currentNotificationId, 'reject');
+      closeEventDetailsModal();
+    }
+  }
+</script>
 {% endblock %}
 
 

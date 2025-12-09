@@ -10,6 +10,18 @@
       <p class="text-gray-400 mt-1">Manage your reminders and alerts</p>
     </div>
     <div class="flex items-center space-x-4">
+      {% if unread_count > 0 %}
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="mark_all_read" value="1">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center space-x-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+          </svg>
+          <span>Mark All Read</span>
+        </button>
+      </form>
+      {% endif %}
       <form method="post" class="inline">
         {% csrf_token %}
         <input type="hidden" name="toggle_notifications" value="1">
@@ -66,7 +78,7 @@
       {% if notifications %}
       <div class="space-y-3">
         {% for notification in notifications %}
-        <div class="flex items-start space-x-4 p-4 rounded-lg {% if not notification.is_read %}bg-gray-700 border-l-4 border-blue-500{% else %}bg-gray-800{% endif %}">
+        <div class="flex items-start space-x-4 p-4 rounded-lg {% if not notification.is_read %}bg-gray-700 border-l-4 {% if notification.notification_type == 'event_invitation' %}border-purple-500{% else %}border-blue-500{% endif %}{% else %}bg-gray-800{% endif %}">
           <div class="flex-shrink-0">
             {% if notification.notification_type == 'reminder' %}
             <div class="w-10 h-10 bg-yellow-600 rounded-full flex items-center justify-center">
@@ -78,6 +90,12 @@
             <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
               <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+            </div>
+            {% elif notification.notification_type == 'event_invitation' %}
+            <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
               </svg>
             </div>
             {% else %}
@@ -93,10 +111,32 @@
               <div class="flex-1">
                 <h4 class="text-white font-medium">{{ notification.title }}</h4>
                 <p class="text-gray-400 text-sm mt-1">{{ notification.message }}</p>
+                
+                {% if notification.event %}
+                <div class="mt-2 p-2 bg-gray-900/50 rounded border border-gray-700">
+                  <p class="text-gray-300 text-xs font-medium">{{ notification.event.title }}</p>
+                  <p class="text-gray-400 text-xs mt-1">
+                    <svg class="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {{ notification.event.start_time|date:"M d, Y g:i A" }}
+                  </p>
+                  {% if notification.event.location %}
+                  <p class="text-gray-400 text-xs mt-1">📍 {{ notification.event.location }}</p>
+                  {% endif %}
+                </div>
+                {% endif %}
+                
                 <div class="flex items-center space-x-4 mt-2">
                   <p class="text-gray-500 text-xs">{{ notification.created_at|date:"M d, Y g:i A" }}</p>
                   <span class="text-gray-500 text-xs">•</span>
-                  <span class="text-gray-500 text-xs capitalize">{{ notification.notification_type }}</span>
+                  <span class="text-gray-500 text-xs capitalize">
+                    {% if notification.notification_type == 'event_invitation' %}
+                      Event Invitation
+                    {% else %}
+                      {{ notification.notification_type }}
+                    {% endif %}
+                  </span>
                   {% if notification.delivery_status %}
                   <span class="text-gray-500 text-xs">•</span>
                   <span class="text-xs {% if notification.delivery_status == 'sent' %}text-green-400{% elif notification.delivery_status == 'failed' %}text-red-400{% else %}text-yellow-400{% endif %}">
@@ -104,6 +144,25 @@
                   </span>
                   {% endif %}
                 </div>
+                
+                <!-- Accept/Reject buttons for event invitations -->
+                {% if notification.notification_type == 'event_invitation' and notification.invitation_status == 'pending' %}
+                <div class="flex gap-2 mt-3">
+                  <button onclick="viewEventDetails({{ notification.event.id }}, {{ notification.id }})" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors">
+                    View Details
+                  </button>
+                  <button onclick="handleInvitation({{ notification.id }}, 'accept')" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors">
+                    Accept
+                  </button>
+                  <button onclick="handleInvitation({{ notification.id }}, 'reject')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors">
+                    Reject
+                  </button>
+                </div>
+                {% elif notification.notification_type == 'event_invitation' and notification.invitation_status == 'accepted' %}
+                <span class="inline-block mt-3 px-3 py-1 bg-green-900/50 text-green-300 text-sm rounded">✓ Accepted</span>
+                {% elif notification.notification_type == 'event_invitation' and notification.invitation_status == 'rejected' %}
+                <span class="inline-block mt-3 px-3 py-1 bg-red-900/50 text-red-300 text-sm rounded">✗ Rejected</span>
+                {% endif %}
               </div>
               {% if not notification.is_read %}
               <form method="post" class="ml-4">
@@ -128,6 +187,172 @@
     </div>
   </div>
 </div>
+
+<!-- Event Details Modal -->
+<div id="eventDetailsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+  <div class="bg-gray-800 rounded-lg border border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="p-6">
+      <div class="flex justify-between items-start mb-4">
+        <h3 class="text-2xl font-bold text-white" id="modalEventTitle"></h3>
+        <button onclick="closeEventDetailsModal()" class="text-gray-400 hover:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <h4 class="text-gray-400 text-sm font-medium mb-1">Event Creator</h4>
+          <p class="text-white" id="modalEventCreator"></p>
+        </div>
+        
+        <div>
+          <h4 class="text-gray-400 text-sm font-medium mb-1">Description</h4>
+          <p class="text-white" id="modalEventDescription"></p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 class="text-gray-400 text-sm font-medium mb-1">Start Time</h4>
+            <p class="text-white" id="modalEventStart"></p>
+          </div>
+          <div>
+            <h4 class="text-gray-400 text-sm font-medium mb-1">End Time</h4>
+            <p class="text-white" id="modalEventEnd"></p>
+          </div>
+        </div>
+        
+        <div id="modalEventLocationContainer" class="hidden">
+          <h4 class="text-gray-400 text-sm font-medium mb-1">Location</h4>
+          <p class="text-white" id="modalEventLocation"></p>
+        </div>
+        
+        <div id="modalEventInvitationContainer" class="hidden">
+          <h4 class="text-gray-400 text-sm font-medium mb-1">Invitation Link</h4>
+          <div class="flex items-center gap-2">
+            <input type="text" id="modalEventInvitationLink" readonly class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded text-sm">
+            <button onclick="copyModalInvitationLink()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors">
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex gap-3 mt-6 pt-4 border-t border-gray-700">
+        <button onclick="acceptFromModal()" class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded transition-colors">
+          Accept Invitation
+        </button>
+        <button onclick="rejectFromModal()" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded transition-colors">
+          Reject Invitation
+        </button>
+        <button onclick="closeEventDetailsModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentNotificationId = null;
+
+  // View Event Details
+  function viewEventDetails(eventId, notificationId) {
+    currentNotificationId = notificationId;
+    
+    fetch(`/homepage/api/events/${eventId}/`)
+      .then(response => response.json())
+      .then(event => {
+        document.getElementById('modalEventTitle').textContent = event.title;
+        document.getElementById('modalEventCreator').textContent = event.creator_name;
+        document.getElementById('modalEventDescription').textContent = event.description || 'No description provided';
+        document.getElementById('modalEventStart').textContent = new Date(event.start).toLocaleString();
+        document.getElementById('modalEventEnd').textContent = new Date(event.end).toLocaleString();
+        
+        if (event.location) {
+          document.getElementById('modalEventLocation').textContent = event.location;
+          document.getElementById('modalEventLocationContainer').classList.remove('hidden');
+        } else {
+          document.getElementById('modalEventLocationContainer').classList.add('hidden');
+        }
+        
+        if (event.invitation_link) {
+          document.getElementById('modalEventInvitationLink').value = event.invitation_link;
+          document.getElementById('modalEventInvitationContainer').classList.remove('hidden');
+        } else {
+          document.getElementById('modalEventInvitationContainer').classList.add('hidden');
+        }
+        
+        document.getElementById('eventDetailsModal').classList.remove('hidden');
+      })
+      .catch(error => {
+        console.error('Error loading event details:', error);
+        alert('Failed to load event details');
+      });
+  }
+
+  function closeEventDetailsModal() {
+    document.getElementById('eventDetailsModal').classList.add('hidden');
+    currentNotificationId = null;
+  }
+
+  function acceptFromModal() {
+    if (currentNotificationId) {
+      handleInvitation(currentNotificationId, 'accept');
+      closeEventDetailsModal();
+    }
+  }
+
+  function rejectFromModal() {
+    if (currentNotificationId) {
+      handleInvitation(currentNotificationId, 'reject');
+      closeEventDetailsModal();
+    }
+  }
+
+  function copyModalInvitationLink() {
+    const linkInput = document.getElementById('modalEventInvitationLink');
+    linkInput.select();
+    navigator.clipboard.writeText(linkInput.value).then(() => {
+      const btn = event.target;
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('bg-green-600', 'hover:bg-green-700');
+      btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+        btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      }, 2000);
+    });
+  }
+
+  // Handle Invitation Accept/Reject
+  function handleInvitation(notificationId, action) {
+    const url = `/homepage/invitation/${notificationId}/${action}/`;
+    
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message);
+        location.reload();
+      } else {
+        alert(data.error || `Failed to ${action} invitation`);
+      }
+    })
+    .catch(error => {
+      alert('An error occurred. Please try again.');
+    });
+  }
+</script>
 {% endblock %}
 
 

@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -40,10 +41,16 @@ def dashboard_view(request):
         start_time__lte=next_24_hours
     ).order_by('start_time')[:10].only('id', 'title', 'start_time', 'location')
     
-    # Get ALL notifications (unread first) for upcoming events section
-    notifications = Notification.objects.filter(user=user).order_by('-is_read', '-created_at')[:10].only(
-        'id', 'title', 'message', 'is_read', 'created_at', 'notification_type'
-    )
+    # Get ALL notifications (unread first) + upcoming events as notifications
+    notifications = Notification.objects.filter(user=user).select_related('event').order_by('-is_read', '-created_at')[:10]
+    
+    # Get upcoming events (within next 7 days) to show as event notifications
+    upcoming_event_notifications = Event.objects.filter(
+        user=user,
+        start_time__gte=now,
+        start_time__lte=now + timedelta(days=7)
+    ).order_by('start_time')[:5]
+    
     unread_count = get_unread_count(user)
     
     # Get upcoming events (next 7 days) for the events widget
@@ -68,6 +75,7 @@ def dashboard_view(request):
     context = {
         'upcoming_reminders': upcoming_reminders,
         'notifications': notifications,
+        'upcoming_event_notifications': upcoming_event_notifications,
         'unread_count': unread_count,
         'upcoming_events': upcoming_events,
         'upcoming_events_json': json.dumps(upcoming_events_payload),
@@ -202,9 +210,7 @@ def notifications_view(request):
     profile = get_user_profile(user)
     
     # Get all notifications - optimized query
-    notifications = Notification.objects.filter(user=user).order_by('-created_at').only(
-        'id', 'title', 'message', 'notification_type', 'is_read', 'delivery_status', 'created_at'
-    )
+    notifications = Notification.objects.filter(user=user).select_related('event').order_by('-created_at')
     
     # Mark as read if requested
     if request.method == 'POST' and 'mark_read' in request.POST:
@@ -217,6 +223,15 @@ def notifications_view(request):
             invalidate_user_cache(user.id)  # Clear cache
             messages.success(request, 'Notification marked as read.')
             return redirect('homepage:notifications')
+    
+    # Mark all as read if requested
+    if request.method == 'POST' and 'mark_all_read' in request.POST:
+        now = timezone.now()
+        unread_notifications = Notification.objects.filter(user=user, is_read=False)
+        count = unread_notifications.update(is_read=True, read_at=now)
+        invalidate_user_cache(user.id)  # Clear cache
+        messages.success(request, f'Marked {count} notification(s) as read.')
+        return redirect('homepage:notifications')
     
     # Toggle notification preferences
     if request.method == 'POST' and 'toggle_notifications' in request.POST:
@@ -440,7 +455,11 @@ def events_api(request):
 @require_http_methods(["GET", "PUT", "DELETE"])
 def event_detail_api(request, event_id):
     """API endpoint for getting, updating, or deleting a specific event"""
-    event = get_object_or_404(Event, id=event_id, user=request.user)
+    event = get_object_or_404(Event, id=event_id)
+    
+    # For PUT and DELETE, verify ownership
+    if request.method in ['PUT', 'DELETE'] and event.user != request.user:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
     
     if request.method == 'GET':
         # Return UTC ISO timestamps; client will convert/display in browser timezone
@@ -448,9 +467,12 @@ def event_detail_api(request, event_id):
             'id': event.id,
             'title': event.title,
             'description': event.description,
-            'start_time': event.start_time.astimezone(pytz.UTC).isoformat(),
-            'end_time': event.end_time.astimezone(pytz.UTC).isoformat(),
+            'start': event.start_time.astimezone(pytz.UTC).isoformat(),
+            'end': event.end_time.astimezone(pytz.UTC).isoformat(),
             'location': event.location,
+            'invitation_link': event.invitation_link,
+            'creator_name': event.user.get_full_name() or event.user.username,
+            'creator_email': event.user.email,
         })
     
     elif request.method == 'PUT':
@@ -500,6 +522,43 @@ def create_event_view(request):
                 event.invitation_link = invitation_link
             
             event.save()
+            
+            # Send invitations to participants
+            if event.invite_participants:
+                participant_emails = [email.strip() for email in event.invite_participants.split(',') if email.strip()]
+                invited_count = 0
+                for email in participant_emails:
+                    # Find user by email
+                    try:
+                        invited_user = User.objects.get(email=email)
+                        # Create event invitation notification for the invited user
+                        Notification.objects.create(
+                            user=invited_user,
+                            title=f"Event Invitation: {event.title}",
+                            message=f"{request.user.username} has invited you to '{event.title}' on {event.start_time.strftime('%Y-%m-%d %H:%M UTC')}. Location: {event.location or 'Not specified'}",
+                            notification_type='event_invitation',
+                            event=event,
+                            invitation_status='pending',
+                            delivery_method='web',
+                            delivery_status='sent'
+                        )
+                        invalidate_user_cache(invited_user.id)  # Clear cache for invited user
+                        invited_count += 1
+                    except User.DoesNotExist:
+                        pass  # Skip if user not found
+                
+                # Create a confirmation notification for the event creator
+                if invited_count > 0:
+                    Notification.objects.create(
+                        user=request.user,
+                        title=f"Invitations Sent for {event.title}",
+                        message=f"You have successfully sent {invited_count} invitation(s) for '{event.title}'",
+                        notification_type='event',
+                        event=event,
+                        delivery_method='web',
+                        delivery_status='sent'
+                    )
+            
             invalidate_user_cache(request.user.id)  # Clear cache
             messages.success(request, 'Event created successfully.')
             return redirect('homepage:calendar')
@@ -562,6 +621,9 @@ def edit_event_view(request, event_id):
     
     # Convert UTC to user's timezone for form
     if request.method == 'POST':
+        # Store old participants before form modifies the event
+        old_participants = set(event.invite_participants.split(',')) if event.invite_participants else set()
+        
         form = EventForm(request.POST, instance=event)
         if form.is_valid():
             event = form.save(commit=False)
@@ -578,6 +640,46 @@ def edit_event_view(request, event_id):
                 event.invitation_link = invitation_link
             
             event.save()
+            
+            # Check if participants were updated
+            new_participants = set(event.invite_participants.split(',')) if event.invite_participants else set()
+            
+            # Send invitations to new participants only
+            newly_added = new_participants - old_participants
+            invited_count = 0
+            for email in newly_added:
+                email = email.strip()
+                if email:
+                    try:
+                        invited_user = User.objects.get(email=email)
+                        # Create event invitation notification
+                        Notification.objects.create(
+                            user=invited_user,
+                            title=f"Event Invitation: {event.title}",
+                            message=f"{request.user.username} has invited you to '{event.title}' on {event.start_time.strftime('%Y-%m-%d %H:%M UTC')}. Location: {event.location or 'Not specified'}",
+                            notification_type='event_invitation',
+                            event=event,
+                            invitation_status='pending',
+                            delivery_method='web',
+                            delivery_status='sent'
+                        )
+                        invalidate_user_cache(invited_user.id)  # Clear cache for invited user
+                        invited_count += 1
+                    except User.DoesNotExist:
+                        pass  # Skip if user not found
+            
+            # Create a confirmation notification for the event creator if new invitations were sent
+            if invited_count > 0:
+                Notification.objects.create(
+                    user=request.user,
+                    title=f"Invitations Sent for {event.title}",
+                    message=f"You have successfully sent {invited_count} new invitation(s) for '{event.title}'",
+                    notification_type='event',
+                    event=event,
+                    delivery_method='web',
+                    delivery_status='sent'
+                )
+            
             invalidate_user_cache(request.user.id)  # Clear cache
             messages.success(request, 'Event updated successfully.')
             return redirect('homepage:calendar')
@@ -602,7 +704,7 @@ def edit_event_view(request, event_id):
 
 @login_required
 def delete_event_view(request, event_id):
-    """View for deleting an event"""
+    """View for deleting an event - creators delete permanently, participants remove from their calendar"""
     event = get_object_or_404(Event, id=event_id, user=request.user)
     profile = get_user_profile(request.user)
     user_tz = pytz.timezone(profile.timezone)
@@ -611,10 +713,21 @@ def delete_event_view(request, event_id):
     event.start_time_display = event.start_time.astimezone(user_tz)
     event.end_time_display = event.end_time.astimezone(user_tz)
     
+    # Check if this is a joined/invited event (user is participant) or original event (user is creator)
+    is_participant = event.external_calendar_type in ['joined', 'invitation']
+    
     if request.method == 'POST':
-        event.delete()
-        invalidate_user_cache(request.user.id)  # Clear cache
-        messages.success(request, 'Event deleted successfully.')
+        if is_participant:
+            # Participant removing event from their calendar only
+            event.delete()
+            invalidate_user_cache(request.user.id)
+            messages.success(request, 'Event removed from your calendar.')
+        else:
+            # Creator deleting the original event - also delete all related notifications
+            Notification.objects.filter(event=event).delete()
+            event.delete()
+            invalidate_user_cache(request.user.id)
+            messages.success(request, 'Event deleted successfully.')
         return redirect('homepage:calendar')
     
     unread_count = get_unread_count(request.user)
@@ -623,6 +736,7 @@ def delete_event_view(request, event_id):
         'event': event,
         'profile': profile,
         'unread_count': unread_count,
+        'is_participant': is_participant,
     })
 
 
@@ -770,19 +884,38 @@ def join_event_view(request):
         if not event_token:
             return JsonResponse({'success': False, 'error': 'Event token is required'}, status=400)
         
-        # Find the event by invitation token
-        event = Event.objects.filter(invitation_link__contains=event_token).first()
+        # Find the event by invitation token - match the exact token in the URL
+        event = Event.objects.filter(invitation_link__icontains=f'/meeting/{event_token}').first()
         
         if not event:
-            return JsonResponse({'success': False, 'error': 'Event not found or link is invalid'}, status=404)
+            return JsonResponse({'success': False, 'error': 'Event not found. Please check the invitation link and try again.'}, status=404)
         
         # Check if the event has already passed
         if event.end_time < timezone.now():
             return JsonResponse({'success': False, 'error': 'This event has already ended'}, status=400)
         
+        # Check if user is the event owner
+        if event.user == request.user:
+            return JsonResponse({'success': False, 'error': 'You cannot join your own event'}, status=400)
+        
+        # Check if user has already joined this event
+        existing_event = Event.objects.filter(
+            user=request.user,
+            external_calendar_id=str(event.id),
+            external_calendar_type__in=['joined', 'invitation']
+        ).first()
+        
+        if existing_event:
+            return JsonResponse({
+                'success': True,
+                'message': 'You have already joined this event',
+                'event_id': existing_event.id,
+                'already_joined': True
+            })
+        
         # Create a copy of the event for the user's calendar
         new_event = Event.objects.create(
-            title=f"{event.title} (Joined)",
+            title=event.title,
             description=event.description,
             start_time=event.start_time,
             end_time=event.end_time,
@@ -798,17 +931,122 @@ def join_event_view(request):
             title='Event Added to Calendar',
             message=f'You have successfully joined "{event.title}"',
             notification_type='event',
-            event=new_event
+            event=new_event,
+            delivery_method='web',
+            delivery_status='sent'
         )
+        
+        invalidate_user_cache(request.user.id)
         
         return JsonResponse({
             'success': True,
             'message': 'Event has been added to your calendar',
-            'event_id': new_event.id
+            'event_id': new_event.id,
+            'already_joined': False
         })
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid request data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def accept_invitation_view(request, notification_id):
+    """Accept an event invitation"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user, notification_type='event_invitation')
+    
+    if notification.invitation_status != 'pending':
+        return JsonResponse({'success': False, 'error': 'Invitation already responded to'}, status=400)
+    
+    if not notification.event:
+        return JsonResponse({'success': False, 'error': 'Event not found'}, status=404)
+    
+    event = notification.event
+    
+    # Check if event has already passed
+    if event.end_time < timezone.now():
+        return JsonResponse({'success': False, 'error': 'This event has already ended'}, status=400)
+    
+    # Check if user has already joined this event (prevent duplicate)
+    existing_event = Event.objects.filter(
+        user=request.user,
+        external_calendar_id=str(event.id),
+        external_calendar_type__in=['joined', 'invitation']
+    ).first()
+    
+    if existing_event:
+        # Update notification status even if already joined
+        notification.invitation_status = 'accepted'
+        notification.is_read = True
+        notification.read_at = timezone.now()
+        notification.save()
+        invalidate_user_cache(request.user.id)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'You have already joined this event',
+            'event_id': existing_event.id
+        })
+    
+    # Create a copy of the event for the user's calendar
+    new_event = Event.objects.create(
+        title=event.title,
+        description=event.description,
+        start_time=event.start_time,
+        end_time=event.end_time,
+        location=event.location,
+        user=request.user,
+        external_calendar_id=str(event.id),
+        external_calendar_type='invitation'
+    )
+    
+    # Update notification status
+    notification.invitation_status = 'accepted'
+    notification.is_read = True
+    notification.read_at = timezone.now()
+    notification.save()
+    
+    # Create a confirmation notification
+    Notification.objects.create(
+        user=request.user,
+        title='Invitation Accepted',
+        message=f'You have accepted the invitation for "{event.title}"',
+        notification_type='event',
+        event=new_event,
+        delivery_method='web',
+        delivery_status='sent'
+    )
+    
+    invalidate_user_cache(request.user.id)
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Invitation accepted and event added to your calendar',
+        'event_id': new_event.id
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def reject_invitation_view(request, notification_id):
+    """Reject an event invitation"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user, notification_type='event_invitation')
+    
+    if notification.invitation_status != 'pending':
+        return JsonResponse({'success': False, 'error': 'Invitation already responded to'}, status=400)
+    
+    # Update notification status
+    notification.invitation_status = 'rejected'
+    notification.is_read = True
+    notification.read_at = timezone.now()
+    notification.save()
+    
+    invalidate_user_cache(request.user.id)
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Invitation rejected'
+    })
 

@@ -29,4 +29,8 @@ urlpatterns = [
     
     # Join event
     path("join-event/", views.join_event_view, name="join_event"),
+    
+    # Event invitation actions
+    path("invitation/<int:notification_id>/accept/", views.accept_invitation_view, name="accept_invitation"),
+    path("invitation/<int:notification_id>/reject/", views.reject_invitation_view, name="reject_invitation"),
 ]

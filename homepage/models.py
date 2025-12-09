@@ -137,6 +137,7 @@ class Notification(models.Model):
     notification_type = models.CharField(max_length=50, choices=[
         ('reminder', 'Reminder'),
         ('event', 'Event'),
+        ('event_invitation', 'Event Invitation'),
         ('system', 'System'),
     ], default='reminder')
     is_read = models.BooleanField(default=False)
@@ -151,6 +152,11 @@ class Notification(models.Model):
         ('failed', 'Failed'),
     ], default='pending')
     event = models.ForeignKey(Event, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+    invitation_status = models.CharField(max_length=50, choices=[
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ], null=True, blank=True, help_text="Status for event invitations")
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)
 

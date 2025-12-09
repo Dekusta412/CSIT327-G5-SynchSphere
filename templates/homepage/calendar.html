@@ -238,48 +238,107 @@
         info.jsEvent.preventDefault();
         currentEventId = info.event.id;
         var event = info.event;
-        // Format dates using the browser's locale and timezone
-        var startDate = new Date(event.start);
-        var endDate = event.end ? new Date(event.end) : new Date(event.start);
-        var startStr = formatEventDateTime(startDate, userLocale);
-        var endStr = formatEventDateTime(endDate, userLocale);
         
-        // Build modal content
-        var content = `
-          <div class="space-y-4">
-            <div>
-              <h4 class="text-2xl font-bold text-white mb-2">${event.title || 'Untitled Event'}</h4>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p class="text-gray-400 text-sm mb-1">Start Time</p>
-                <p class="text-white font-semibold">${startStr}</p>
-              </div>
-              <div>
-                <p class="text-gray-400 text-sm mb-1">End Time</p>
-                <p class="text-white font-semibold">${endStr}</p>
-              </div>
-            </div>
-            
-            ${event.extendedProps.location ? `
-            <div>
-              <p class="text-gray-400 text-sm mb-1">Location</p>
-              <p class="text-white">📍 ${event.extendedProps.location}</p>
-            </div>
-            ` : ''}
-            
-            ${event.extendedProps.description ? `
-            <div>
-              <p class="text-gray-400 text-sm mb-1">Description</p>
-              <p class="text-white whitespace-pre-wrap">${event.extendedProps.description}</p>
-            </div>
-            ` : ''}
-          </div>
-        `;
-        
-        if (modalContent) modalContent.innerHTML = content;
+        // Show loading state
+        if (modalContent) modalContent.innerHTML = '<div class="text-center text-white">Loading...</div>';
         if (modal) modal.classList.remove('hidden');
+        
+        // Fetch full event details including creator information
+        fetch(`/homepage/api/events/${currentEventId}/`)
+          .then(response => response.json())
+          .then(eventData => {
+            // Format dates using the browser's locale and timezone
+            var startDate = new Date(event.start);
+            var endDate = event.end ? new Date(event.end) : new Date(event.start);
+            var startStr = formatEventDateTime(startDate, userLocale);
+            var endStr = formatEventDateTime(endDate, userLocale);
+            
+            // Build modal content with creator information
+            var content = `
+              <div class="space-y-4">
+                <div>
+                  <h4 class="text-2xl font-bold text-white mb-2">${event.title || 'Untitled Event'}</h4>
+                </div>
+                
+                ${eventData.creator_name ? `
+                <div>
+                  <p class="text-gray-400 text-sm mb-1">Created By</p>
+                  <p class="text-white">👤 ${eventData.creator_name}</p>
+                </div>
+                ` : ''}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-gray-400 text-sm mb-1">Start Time</p>
+                    <p class="text-white font-semibold">${startStr}</p>
+                  </div>
+                  <div>
+                    <p class="text-gray-400 text-sm mb-1">End Time</p>
+                    <p class="text-white font-semibold">${endStr}</p>
+                  </div>
+                </div>
+                
+                ${event.extendedProps.location ? `
+                <div>
+                  <p class="text-gray-400 text-sm mb-1">Location</p>
+                  <p class="text-white">📍 ${event.extendedProps.location}</p>
+                </div>
+                ` : ''}
+                
+                ${event.extendedProps.description ? `
+                <div>
+                  <p class="text-gray-400 text-sm mb-1">Description</p>
+                  <p class="text-white whitespace-pre-wrap">${event.extendedProps.description}</p>
+                </div>
+                ` : ''}
+              </div>
+            `;
+            
+            if (modalContent) modalContent.innerHTML = content;
+          })
+          .catch(error => {
+            console.error('Error fetching event details:', error);
+            // Fallback to basic event info without creator
+            var startDate = new Date(event.start);
+            var endDate = event.end ? new Date(event.end) : new Date(event.start);
+            var startStr = formatEventDateTime(startDate, userLocale);
+            var endStr = formatEventDateTime(endDate, userLocale);
+            
+            var content = `
+              <div class="space-y-4">
+                <div>
+                  <h4 class="text-2xl font-bold text-white mb-2">${event.title || 'Untitled Event'}</h4>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-gray-400 text-sm mb-1">Start Time</p>
+                    <p class="text-white font-semibold">${startStr}</p>
+                  </div>
+                  <div>
+                    <p class="text-gray-400 text-sm mb-1">End Time</p>
+                    <p class="text-white font-semibold">${endStr}</p>
+                  </div>
+                </div>
+                
+                ${event.extendedProps.location ? `
+                <div>
+                  <p class="text-gray-400 text-sm mb-1">Location</p>
+                  <p class="text-white">📍 ${event.extendedProps.location}</p>
+                </div>
+                ` : ''}
+                
+                ${event.extendedProps.description ? `
+                <div>
+                  <p class="text-gray-400 text-sm mb-1">Description</p>
+                  <p class="text-white whitespace-pre-wrap">${event.extendedProps.description}</p>
+                </div>
+                ` : ''}
+              </div>
+            `;
+            
+            if (modalContent) modalContent.innerHTML = content;
+          });
         
         // Update button URLs
         if (editEventBtn) {
