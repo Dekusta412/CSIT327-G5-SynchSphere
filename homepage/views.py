@@ -44,20 +44,20 @@ def dashboard_view(request):
     # Get ALL notifications (unread first) + upcoming events as notifications
     notifications = Notification.objects.filter(user=user).select_related('event').order_by('-is_read', '-created_at')[:10]
     
-    # Get upcoming events (within next 7 days) to show as event notifications
+    # Get upcoming events (within next 24 hours) to show as event notifications
     upcoming_event_notifications = Event.objects.filter(
         user=user,
         start_time__gte=now,
-        start_time__lte=now + timedelta(days=7)
+        start_time__lte=next_24_hours
     ).order_by('start_time')[:5]
     
     unread_count = get_unread_count(user)
     
-    # Get upcoming events (next 7 days) for the events widget
+    # Get upcoming events (next 24 hours) for the events widget
     upcoming_events_qs = Event.objects.filter(
         user=user,
         start_time__gte=now,
-        start_time__lte=now + timedelta(days=7)
+        start_time__lte=next_24_hours
     ).order_by('start_time')[:5].only('id', 'title', 'start_time', 'end_time', 'location')
     upcoming_events = list(upcoming_events_qs)
     upcoming_events_payload = [
@@ -350,6 +350,11 @@ def profile_view(request):
 
     total_events = Event.objects.filter(user=user).count()
     active_reminders = Reminder.objects.filter(user=user, is_sent=False).count()
+    pending_invites = Notification.objects.filter(
+        user=user,
+        notification_type='event_invitation',
+        invitation_status='pending'
+    ).count()
 
     profile_form = UserProfileForm(instance=profile)
     user_form = UserUpdateForm(instance=user)
@@ -380,7 +385,7 @@ def profile_view(request):
         'recent_events': recent_events,
         'recent_reminders': recent_reminders,
         'total_events': total_events,
-        'active_reminders': active_reminders,
+        'pending_invites': pending_invites,
         'unread_count': unread_count,
         'save_success': save_success,
     }

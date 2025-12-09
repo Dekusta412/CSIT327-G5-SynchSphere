@@ -57,7 +57,13 @@
                {{ event.start_time|date:"M d, Y g:i A" }} - {{ event.end_time|date:"g:i A" }}
             </p>
             {% if event.location %}
-            <p class="text-gray-500 text-xs mt-1">📍 {{ event.location }}</p>
+            <p class="text-gray-500 text-xs mt-1 flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              {{ event.location }}
+            </p>
             {% endif %}
             {% if event.description %}
             <p class="text-gray-500 text-sm mt-2">{{ event.description|truncatewords:20 }}</p>
@@ -263,7 +269,12 @@
                 ${eventData.creator_name ? `
                 <div>
                   <p class="text-gray-400 text-sm mb-1">Created By</p>
-                  <p class="text-white">👤 ${eventData.creator_name}</p>
+                  <p class="text-white flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                    ${eventData.creator_name}
+                  </p>
                 </div>
                 ` : ''}
                 
@@ -328,10 +339,16 @@
                 </div>
                 ` : ''}
                 
-                ${event.extendedProps.description ? `
+                ${event.extendedProps.location ? `
                 <div>
-                  <p class="text-gray-400 text-sm mb-1">Description</p>
-                  <p class="text-white whitespace-pre-wrap">${event.extendedProps.description}</p>
+                  <p class="text-gray-400 text-sm mb-1">Location</p>
+                  <p class="text-white flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    ${event.extendedProps.location}
+                  </p>
                 </div>
                 ` : ''}
               </div>
@@ -519,7 +536,13 @@
           ${location ? `
           <div>
             <p class="text-gray-400 text-sm mb-1">Location</p>
-            <p class="text-white">📍 ${location}</p>
+            <p class="text-white flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              ${location}
+            </p>
           </div>
           ` : ''}
           
