@@ -631,10 +631,18 @@ def create_event_view(request):
 
 @login_required
 def edit_event_view(request, event_id):
-    """View for editing an event"""
+    """View for editing an event - only owner can edit, invitees can only view"""
     event = get_object_or_404(Event, id=event_id, user=request.user)
     profile = get_user_profile(request.user)
     user_tz = pytz.timezone(profile.timezone)
+    
+    # Check if this is an invited/joined event (user is participant) or original event (user is owner)
+    is_invited = event.external_calendar_type in ['joined', 'invitation']
+    
+    # If user is not the owner, redirect to a read-only view or show error
+    if is_invited:
+        messages.error(request, 'Only the event owner can edit this event. You can only view and delete it from your calendar.')
+        return redirect('homepage:calendar')
     
     # Convert UTC to user's timezone for form
     if request.method == 'POST':
@@ -657,6 +665,19 @@ def edit_event_view(request, event_id):
                 event.invitation_link = invitation_link
             
             event.save()
+            
+            # Update all invitees' copied events with the new details
+            invitee_events = Event.objects.filter(
+                external_calendar_id=str(event.id),
+                external_calendar_type__in=['joined', 'invitation']
+            )
+            for invitee_event in invitee_events:
+                invitee_event.title = event.title
+                invitee_event.description = event.description
+                invitee_event.start_time = event.start_time
+                invitee_event.end_time = event.end_time
+                invitee_event.location = event.location
+                invitee_event.save()
             
             # Check if participants were updated
             new_participants = set(event.invite_participants.split(',')) if event.invite_participants else set()
@@ -698,7 +719,7 @@ def edit_event_view(request, event_id):
                 )
             
             invalidate_user_cache(request.user.id)  # Clear cache
-            messages.success(request, 'Event updated successfully.')
+            messages.success(request, 'Event updated successfully. All invitees have been notified of the changes.')
             return redirect('homepage:calendar')
     else:
         # Convert UTC times to user's timezone for display
@@ -716,6 +737,7 @@ def edit_event_view(request, event_id):
         'event': event,
         'profile': profile,
         'unread_count': unread_count,
+        'is_invited': is_invited,
     })
 
 

@@ -8,6 +8,14 @@
     <p class="text-gray-400 mt-1">Update event details</p>
   </div>
 
+  {% if is_invited %}
+  <div class="mb-6 p-4 bg-yellow-900 border border-yellow-700 rounded-lg">
+    <p class="text-yellow-200">
+      <strong>Read-Only View:</strong> Only the event owner can edit this event. You can view the details or delete it from your calendar.
+    </p>
+  </div>
+  {% endif %}
+
   <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
     <form method="post" class="space-y-4">
       {% csrf_token %}
