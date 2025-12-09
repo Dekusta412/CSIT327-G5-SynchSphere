@@ -17,6 +17,7 @@ from .utils import (
     invalidate_user_cache,
     get_timezone,
     convert_to_utc,
+    convert_datetime_to_user_tz,
 )
 from datetime import datetime, timedelta
 import json
@@ -33,32 +34,55 @@ def dashboard_view(request):
     # Get events happening within the next 24 hours (today's events)
     now = timezone.now()
     next_24_hours = now + timedelta(hours=24)
+    next_7_days = now + timedelta(days=7)
     
     # Get events within next 24 hours for today's events section
     upcoming_reminders = Event.objects.filter(
         user=user,
         start_time__gte=now,
         start_time__lte=next_24_hours
-    ).order_by('start_time')[:10].only('id', 'title', 'start_time', 'location')
+    ).order_by('start_time')[:10]
     
-    # Get ALL notifications (unread first) + upcoming events as notifications
+    # Create JSON payload for today's events
+    today_events_payload = [
+        {
+            'id': event.id,
+            'title': event.title,
+            'start': event.start_time.astimezone(pytz.UTC).isoformat(),
+            'location': event.location or '',
+        }
+        for event in upcoming_reminders
+    ]
+    
+    # Get ALL notifications (unread first)
     notifications = Notification.objects.filter(user=user).select_related('event').order_by('-is_read', '-created_at')[:10]
     
-    # Get upcoming events (within next 24 hours) to show as event notifications
-    upcoming_event_notifications = Event.objects.filter(
+    # Get ALL upcoming events (from now onwards) to show as event notifications
+    all_upcoming_events = Event.objects.filter(
         user=user,
-        start_time__gte=now,
-        start_time__lte=next_24_hours
-    ).order_by('start_time')[:5]
+        start_time__gte=now
+    ).order_by('start_time')[:20]  # Show up to 20 upcoming events
+    
+    # Create JSON payload for all upcoming events
+    upcoming_notifications_payload = [
+        {
+            'id': event.id,
+            'title': event.title,
+            'type': 'event',
+            'start': event.start_time.astimezone(pytz.UTC).isoformat(),
+            'location': event.location or '',
+        }
+        for event in all_upcoming_events
+    ]
     
     unread_count = get_unread_count(user)
     
-    # Get upcoming events (next 24 hours) for the events widget
+    # Get upcoming events (next 7 days) for the calendar preview widget
     upcoming_events_qs = Event.objects.filter(
         user=user,
         start_time__gte=now,
-        start_time__lte=next_24_hours
-    ).order_by('start_time')[:5].only('id', 'title', 'start_time', 'end_time', 'location')
+        start_time__lte=next_7_days
+    ).order_by('start_time')[:20].only('id', 'title', 'start_time', 'end_time', 'location')
     upcoming_events = list(upcoming_events_qs)
     upcoming_events_payload = [
         {
@@ -75,10 +99,11 @@ def dashboard_view(request):
     context = {
         'upcoming_reminders': upcoming_reminders,
         'notifications': notifications,
-        'upcoming_event_notifications': upcoming_event_notifications,
         'unread_count': unread_count,
         'upcoming_events': upcoming_events,
         'upcoming_events_json': json.dumps(upcoming_events_payload),
+        'today_events_json': json.dumps(today_events_payload),
+        'upcoming_notifications_json': json.dumps(upcoming_notifications_payload),
         'has_upcoming_events': bool(upcoming_events_payload),
         'profile': profile,
         'profile_timezone': profile.timezone,
@@ -97,20 +122,9 @@ def calendar_view(request):
     events = Event.objects.filter(user=user).order_by('start_time').only(
         'id', 'title', 'start_time', 'end_time', 'description', 'location'
     )[:100]  # Limit to 100 events for initial load
-    # Prepare display-friendly datetimes for server-rendered lists (converted to user's timezone)
-    try:
-        user_tz = get_timezone(profile.timezone)
-        for ev in events:
-            ev.start_time_display = ev.start_time.astimezone(user_tz)
-            ev.end_time_display = ev.end_time.astimezone(user_tz)
-    except Exception:
-        # Fallback: leave original datetimes if timezone conversion fails
-        pass
     
-    # Send event datetimes to the client in UTC ISO format (with offset)
-    # The browser/FullCalendar will display them in the user's local timezone.
+    # Create JSON payload with UTC times for JavaScript rendering
     events_data = []
-
     for event in events:
         # Convert stored UTC datetimes to explicit UTC ISO strings
         start_utc = event.start_time.astimezone(pytz.UTC)
@@ -121,10 +135,8 @@ def calendar_view(request):
             'title': event.title,
             'start': start_utc.isoformat(),
             'end': end_utc.isoformat(),
-            'extendedProps': {
-                'description': (event.description or '')[:200],
-                'location': event.location or '',
-            },
+            'description': event.description or '',
+            'location': event.location or '',
         }
         events_data.append(event_data)
     
@@ -133,8 +145,8 @@ def calendar_view(request):
     context = {
         'events': events,
         'events_json': json.dumps(events_data),
-        'events_list_data': json.dumps(events_data),  # Reuse same data
         'profile': profile,
+        'profile_timezone': profile.timezone,
         'unread_count': unread_count,
     }
     

@@ -63,3 +63,27 @@ def convert_to_utc(dt, tz_name, treat_input_as_local=False):
         return localized.astimezone(pytz.UTC)
 
     return dt.astimezone(pytz.UTC)
+
+
+def convert_datetime_to_user_tz(dt, user_tz_name):
+    """Convert a UTC datetime to user's timezone.
+    
+    Args:
+        dt: A datetime object (assumed to be UTC if timezone-aware, or UTC if naive)
+        user_tz_name: The user's timezone string (e.g., 'America/Chicago')
+    
+    Returns:
+        A timezone-aware datetime in the user's timezone
+    """
+    if dt is None:
+        return None
+    
+    user_tz_name = user_tz_name or 'UTC'
+    user_tz = get_timezone(user_tz_name)
+    
+    # If datetime is naive, assume it's UTC
+    if timezone.is_naive(dt):
+        dt = pytz.UTC.localize(dt)
+    
+    # Convert to user's timezone
+    return dt.astimezone(user_tz)
