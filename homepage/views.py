@@ -740,8 +740,15 @@ def delete_event_view(request, event_id):
             invalidate_user_cache(request.user.id)
             messages.success(request, 'Event removed from your calendar.')
         else:
-            # Creator deleting the original event - also delete all related notifications
+            # Creator deleting the original event - also delete all related notifications and invitee events
             Notification.objects.filter(event=event).delete()
+            
+            # Delete all events created by invitees who accepted this invitation
+            Event.objects.filter(
+                external_calendar_id=str(event.id),
+                external_calendar_type__in=['joined', 'invitation']
+            ).delete()
+            
             event.delete()
             invalidate_user_cache(request.user.id)
             messages.success(request, 'Event deleted successfully.')
